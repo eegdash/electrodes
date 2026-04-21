@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
 <link rel="stylesheet" href="styles.css?v=4" />
-<script src="montages.js?v=5"></script>
+<script src="montages.js?v=6"></script>
 <script src="bids-loader.js?v=2"></script>
 <script src="topo2d.js?v=6"></script>
 </head>
@@ -209,14 +209,23 @@ const stageEl = document.getElementById('stage');
 const stage2d = document.getElementById('stage-2d');
 EEGTopo2D.init(stage2d);
 
-/* Montage list */
+/* Montage list — grouped by vendor/family. Keys must exist in MONTAGES. */
 const montageList = document.getElementById('montage-list');
-const MONTAGE_ORDER = [
-  '10-20', '10-10', '10-05',
-  'biosemi16', 'biosemi32', 'biosemi64', 'biosemi128', 'biosemi256',
-  'egi128', 'egi256',
-  'mgh60', 'easycap-M1',
+const MONTAGE_GROUPS = [
+  ['10–20 system',    ['10-20', '10-10', '10-05']],
+  ['BioSemi',         ['biosemi16', 'biosemi32', 'biosemi64', 'biosemi64-10-10', 'biosemi128', 'biosemi128-A01', 'biosemi256', 'biosemi256-A001']],
+  ['BrainProducts',   ['easycap-M1', 'easycap64', 'easycap128', 'acticap65', 'acticap68', 'acticap97', 'acticap128']],
+  ['ANT Waveguard',   ['antwg32', 'antwg64', 'antwg64d', 'antwg128', 'antwg256']],
+  ['Neuroscan',       ['neuroscan-maglink-65', 'neuroscan-quikcap-64', 'neuroscan-quikcap-68', 'neuroscan-quikcap-123', 'neuroscan-quikcap-128']],
+  ['EGI HydroCel',    ['egi128', 'egi256']],
+  ['EGI classic GSN', ['egi-gsn-64v1', 'egi-gsn-64v2', 'egi-gsn-128', 'egi-gsn-256']],
+  ['EGI infant nets', ['egi-infant-0-2-32', 'egi-infant-0-2-64', 'egi-infant-0-2-128', 'egi-infant-2-9-32', 'egi-infant-2-9-64', 'egi-infant-2-9-128', 'egi-infant-9-18-32', 'egi-infant-9-18-64', 'egi-infant-9-18-128', 'egi-infant-9-18-256']],
+  ['EGI adult avg',   ['egi-adult-32', 'egi-adult-64', 'egi-adult-128', 'egi-adult-256']],
+  ['BESA HD-EEG',     ['besa-red-254', 'besa-yellow-254']],
+  ['Other',           ['mgh60', 'dsi24', 'u562-128']],
 ];
+const MONTAGE_ORDER = MONTAGE_GROUPS.flatMap(([, keys]) => keys).filter(k => MONTAGES[k]);
+
 function renderMontageButton(btn, label, count) {
   btn.textContent = '';
   const name = document.createElement('span');
@@ -227,14 +236,22 @@ function renderMontageButton(btn, label, count) {
   btn.append(name, countEl);
 }
 
-MONTAGE_ORDER.forEach(key => {
-  const m = MONTAGES[key];
-  const btn = document.createElement('button');
-  btn.className = 'montage-btn';
-  btn.dataset.key = key;
-  renderMontageButton(btn, m.label, m.count);
-  btn.addEventListener('click', () => setMontage(key));
-  montageList.appendChild(btn);
+MONTAGE_GROUPS.forEach(([groupLabel, keys]) => {
+  const present = keys.filter(k => MONTAGES[k]);
+  if (!present.length) return;
+  const head = document.createElement('div');
+  head.className = 'montage-group-head';
+  head.textContent = groupLabel;
+  montageList.appendChild(head);
+  present.forEach(key => {
+    const m = MONTAGES[key];
+    const btn = document.createElement('button');
+    btn.className = 'montage-btn';
+    btn.dataset.key = key;
+    renderMontageButton(btn, m.label, m.count);
+    btn.addEventListener('click', () => setMontage(key));
+    montageList.appendChild(btn);
+  });
 });
 
 /* ========= BIDS loader wiring (electrodes.tsv + coordsystem.json) ========= */

@@ -121,7 +121,28 @@ body {
 .rail-section { margin-bottom: 22px; }
 
 /* Montage picker */
-.montage-list { display: flex; flex-direction: column; gap: 2px; }
+.montage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 420px);
+  min-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.montage-list::-webkit-scrollbar { width: 6px; }
+.montage-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.montage-group-head {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 10px 3px;
+  border-top: 1px dashed var(--line);
+  margin-top: 4px;
+}
+.montage-group-head:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
 .montage-btn {
   display: flex;
   justify-content: space-between;

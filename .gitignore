@@ -8,3 +8,7 @@
 
 # Node (if we ever add a build step)
 node_modules/
+
+# Third-party montage source files, re-downloaded on demand by
+# scripts/build-third-party-montages.py. Not needed in the repo.
+scripts/_vendor-cache/
