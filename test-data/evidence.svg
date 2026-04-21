@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.25 -1.25 2.5 2.5" width="720" height="720" style="background:#faf9f5;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
+<defs><style>.lbl{font-size:0.034px;font-weight:500;fill:#17181a;pointer-events:none;paint-order:stroke;stroke:#faf9f5;stroke-width:0.014;stroke-linejoin:round}.region{font-size:0.05px;fill:#8a8a85;letter-spacing:0.04em}</style></defs>
+<circle cx="0" cy="0" r="1" fill="#f7f6f2" stroke="#17181a" stroke-width="0.012"/>
+<circle cx="0" cy="0" r="0.25" fill="none" stroke="#b5b8bd" stroke-width="0.003" stroke-dasharray="0.012 0.018" opacity="0.45"/>
+<circle cx="0" cy="0" r="0.5" fill="none" stroke="#b5b8bd" stroke-width="0.003" stroke-dasharray="0.012 0.018" opacity="0.45"/>
+<circle cx="0" cy="0" r="0.75" fill="none" stroke="#b5b8bd" stroke-width="0.003" stroke-dasharray="0.012 0.018" opacity="0.45"/>
+<path d="M -0.15 -0.992 Q -0.06 -1.08, 0 -1.12 Q 0.06 -1.08, 0.15 -0.992" fill="none" stroke="#17181a" stroke-width="0.012" stroke-linecap="round"/>
+<path d="M -0.99 -0.13 C -1.05 -0.09, -1.07 0.02, -1.06 0.09 C -1.05 0.15, -1.03 0.18, -0.995 0.18" fill="none" stroke="#17181a" stroke-width="0.012" stroke-linecap="round"/>
+<path d="M 0.99 -0.13 C 1.05 -0.09, 1.07 0.02, 1.06 0.09 C 1.05 0.15, 1.03 0.18, 0.995 0.18" fill="none" stroke="#17181a" stroke-width="0.012" stroke-linecap="round"/>
+<line x1="0" y1="-1" x2="0" y2="1" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<line x1="-1" y1="0" x2="1" y2="0" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<text x="0" y="-1.06" text-anchor="middle" dominant-baseline="alphabetic" class="region">NASION</text>
+<text x="0" y="1.09" text-anchor="middle" dominant-baseline="hanging" class="region">INION</text>
+<text x="-1.08" y="0" text-anchor="end" dominant-baseline="middle" class="region">LPA</text>
+<text x="1.08" y="0" text-anchor="start" dominant-baseline="middle" class="region">RPA</text>
+<circle cx="-0.2919" cy="-0.9565" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2919" y="-0.9965" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Fp1</text>
+<circle cx="0.2919" cy="-0.9565" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2919" y="-0.9965" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Fp2</text>
+<circle cx="-0.7880" cy="-0.6157" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.7880" y="-0.6557" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">F7</text>
+<circle cx="-0.4064" cy="-0.5307" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.4064" y="-0.5707" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">F3</text>
+<circle cx="-0.0000" cy="-0.4968" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.0000" y="-0.5368" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Fz</text>
+<circle cx="0.4064" cy="-0.5307" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.4064" y="-0.5707" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">F4</text>
+<circle cx="0.7880" cy="-0.6157" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.7880" y="-0.6557" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">F8</text>
+<circle cx="-0.9991" cy="0.0422" r="0.028" fill="#5bab8b" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.9991" y="0.0022" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">T7</text>
+<circle cx="-0.4797" cy="0.0429" r="0.028" fill="#5bab8b" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.4797" y="0.0029" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">C3</text>
+<circle cx="-0.0000" cy="-0.0762" r="0.028" fill="#5bab8b" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.0000" y="-0.1162" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Cz</text>
+<circle cx="0.4797" cy="0.0429" r="0.028" fill="#5bab8b" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.4797" y="0.0029" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">C4</text>
+<circle cx="0.9991" cy="0.0422" r="0.028" fill="#5bab8b" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.9991" y="0.0022" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">T8</text>
+<circle cx="-0.7712" cy="0.6366" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.7712" y="0.5966" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">P7</text>
+<circle cx="-0.4120" cy="0.5182" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.4120" y="0.4782" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">P3</text>
+<circle cx="-0.0000" cy="0.3760" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.0000" y="0.3360" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Pz</text>
+<circle cx="0.4120" cy="0.5182" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.4120" y="0.4782" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">P4</text>
+<circle cx="0.7712" cy="0.6366" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.7712" y="0.5966" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">P8</text>
+<circle cx="-0.2944" cy="0.9557" r="0.028" fill="#c46a57" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2944" y="0.9157" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">O1</text>
+<circle cx="-0.0000" cy="1.0000" r="0.028" fill="#c46a57" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.0000" y="0.9600" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">Oz</text>
+<circle cx="0.2944" cy="0.9557" r="0.028" fill="#c46a57" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2944" y="0.9157" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">O2</text>
+<circle cx="-0.2514" cy="-0.7103" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2514" y="-0.7503" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">AF3</text>
+<circle cx="0.2514" cy="-0.7103" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2514" y="-0.7503" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">AF4</text>
+<circle cx="-0.7067" cy="-0.2950" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.7067" y="-0.3350" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">FC5</text>
+<circle cx="-0.2479" cy="-0.2512" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2479" y="-0.2912" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">FC1</text>
+<circle cx="0.2479" cy="-0.2512" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2479" y="-0.2912" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">FC2</text>
+<circle cx="0.7067" cy="-0.2950" r="0.028" fill="#6e8bc9" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.7067" y="-0.3350" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">FC6</text>
+<circle cx="-0.6846" cy="0.3632" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.6846" y="0.3232" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">CP5</text>
+<circle cx="-0.2472" cy="0.2584" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2472" y="0.2184" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">CP1</text>
+<circle cx="0.2472" cy="0.2584" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2472" y="0.2184" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">CP2</text>
+<circle cx="0.6846" cy="0.3632" r="0.028" fill="#c9a24a" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.6846" y="0.3232" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">CP6</text>
+<circle cx="-0.2512" cy="0.7106" r="0.028" fill="#c46a57" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="-0.2512" y="0.6706" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">PO3</text>
+<circle cx="0.2512" cy="0.7106" r="0.028" fill="#c46a57" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>
+<text x="0.2512" y="0.6706" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">PO4</text>
+<text x="-1.2" y="1.2" font-size="0.055" fill="#17181a" font-weight="600">Evidence: BIDSLoader + topo2d projection</text>
+<text x="-1.2" y="1.245" font-size="0.04" fill="#8a8a85">32ch · CapTrak · input mm → fit sphere R=94.1mm</text>
+</svg>

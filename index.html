@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EEG Electrode Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="styles.css?v=4" />
+<script src="montages.js?v=4"></script>
+<script src="bids-loader.js?v=1"></script>
+<script src="topo2d.js?v=5"></script>
+</head>
+<body>
+
+<!-- Error banner for embed mode. Also used as a redundant cue outside
+     embed mode. Starts hidden; shown by showLoadError(). -->
+<div class="embed-error" id="embed-error" hidden></div>
+
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-title">Electrode Explorer</div>
+      </div>
+      <div class="brand-sub">BIDS / iEEG-EEG montage workbench</div>
+    </div>
+    <div class="header-right">
+      <span class="pill" id="pill-montage">—</span>
+      <span class="pill" id="pill-selected">0 selected</span>
+      <span class="pill" id="pill-coord">RAS+ · meters</span>
+    </div>
+  </header>
+
+  <!-- LEFT RAIL -->
+  <aside class="rail left" data-screen-label="left-rail">
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Montage</span></h3>
+      <div class="montage-list" id="montage-list"></div>
+      <button class="btn" id="load-bids-btn" style="margin-top:8px;width:100%;">Load electrodes.tsv…</button>
+      <input type="file" id="load-bids-input" accept=".tsv,.json" multiple hidden />
+      <div style="margin-top:6px;font-size:10px;color:var(--muted);line-height:1.35;letter-spacing:0.02em">
+        Pick <code>electrodes.tsv</code> (+ optional <code>coordsystem.json</code>), or drop them anywhere.
+      </div>
+      <div id="load-bids-status" style="margin-top:4px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace"></div>
+    </section>
+
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Channels</span><span id="channel-count" class="count" style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);">0</span></h3>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input id="search" placeholder="Search Fp1, C3, occipital…" autocomplete="off" />
+      </div>
+      <div class="ch-list" id="ch-list"></div>
+    </section>
+
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Regions</span></h3>
+      <div class="legend" id="legend">
+        <div class="legend-item" data-region="frontal"><span class="legend-swatch" style="background: oklch(0.60 0.14 265)"></span>Frontal</div>
+        <div class="legend-item" data-region="central"><span class="legend-swatch" style="background: oklch(0.62 0.14 150)"></span>Central</div>
+        <div class="legend-item" data-region="parietal"><span class="legend-swatch" style="background: oklch(0.62 0.15 85)"></span>Parietal</div>
+        <div class="legend-item" data-region="occipital"><span class="legend-swatch" style="background: oklch(0.58 0.15 25)"></span>Occipital</div>
+        <div class="legend-item" data-region="reference"><span class="legend-swatch" style="background: oklch(0.50 0.02 270)"></span>Reference</div>
+        <div class="legend-item" data-region="egi"><span class="legend-swatch" style="background: oklch(0.55 0.15 300)"></span>EGI</div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- STAGE -->
+  <main class="stage" id="stage" data-screen-label="viewer">
+    <div class="stage-overlay top-left" id="stage-hint">
+      Click an electrode to select &nbsp;·&nbsp; shift-click to add
+    </div>
+
+    <!-- 2D top-view container (MNE/EEGLAB style) -->
+    <div class="stage-pane" id="stage-2d" data-screen-label="2d-top">
+      <div class="stage-caption" id="stage-caption" aria-hidden="true"></div>
+    </div>
+    <div class="tooltip" id="tooltip">
+      <div class="tt-name">—</div>
+      <div class="tt-coords">—</div>
+    </div>
+
+    <!-- Tweaks Panel -->
+    <div class="tweaks-panel" id="tweaks-panel">
+      <div class="tweaks-title">Tweaks</div>
+      <div class="tweak-row">
+        <label>Head opacity <span id="val-head">12%</span></label>
+        <input type="range" id="tw-head-opacity" min="0" max="0.6" step="0.01" value="0.12" />
+      </div>
+      <div class="tweak-row">
+        <label>Electrode size <span id="val-size">1.0×</span></label>
+        <input type="range" id="tw-dot-size" min="0.4" max="2.0" step="0.05" value="1.0" />
+      </div>
+      <div class="tweak-row">
+        <label>Label density</label>
+        <div class="tweak-toggle" id="tw-labels">
+          <button class="view-btn" data-val="none">none</button>
+          <button class="view-btn on" data-val="smart">smart</button>
+          <button class="view-btn" data-val="all">all</button>
+        </div>
+      </div>
+      <div class="tweak-row">
+        <label>Color mode</label>
+        <div class="tweak-toggle" id="tw-color">
+          <button class="view-btn on" data-val="region">region</button>
+          <button class="view-btn" data-val="highlight">select</button>
+          <button class="view-btn" data-val="uniform">mono</button>
+        </div>
+      </div>
+      <div class="tweak-row">
+        <label>Head model</label>
+        <div class="tweak-toggle" id="tw-head">
+          <button class="view-btn on" data-val="on">show</button>
+          <button class="view-btn" data-val="off">hide</button>
+        </div>
+      </div>
+      <div class="tweak-row">
+        <label>Landmarks (Nz/Iz/LPA/RPA)</label>
+        <div class="tweak-toggle" id="tw-landmarks">
+          <button class="view-btn on" data-val="on">show</button>
+          <button class="view-btn" data-val="off">hide</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL -->
+  <aside class="rail right" data-screen-label="right-rail">
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Selected</span><button id="clear-sel" style="font-family:'IBM Plex Mono',monospace;font-size:10px;background:none;border:none;color:var(--muted);cursor:pointer;letter-spacing:0.1em;text-transform:uppercase;">Clear</button></h3>
+      <div class="selected-card" id="selected-card">
+        <div class="selected-name" id="sel-name">—</div>
+        <div class="selected-region" id="sel-region">Click an electrode</div>
+        <dl class="coord-grid" id="sel-coords" style="display:none">
+          <dt>x</dt><dd id="sel-x">—</dd>
+          <dt>y</dt><dd id="sel-y">—</dd>
+          <dt>z</dt><dd id="sel-z">—</dd>
+          <dt>az</dt><dd id="sel-az">—</dd>
+          <dt>el</dt><dd id="sel-el">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Statistics</span></h3>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Total</div><div class="stat-value" id="stat-total">0</div></div>
+        <div class="stat"><div class="stat-label">Selected</div><div class="stat-value" id="stat-sel">0</div></div>
+        <div class="stat"><div class="stat-label">Mean radius</div><div class="stat-value" id="stat-r">—</div></div>
+        <div class="stat"><div class="stat-label">Hemisphere</div><div class="stat-value" id="stat-hemi">L/R</div></div>
+      </div>
+    </section>
+
+    <section class="rail-section">
+      <h3 class="rail-title"><span>Quick actions</span></h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn" id="act-select-frontal">Select all frontal</button>
+        <button class="btn" id="act-select-left">Select left hemisphere</button>
+        <button class="btn" id="act-invert">Invert selection</button>
+        <button class="btn" id="act-export-selected" style="margin-top:8px">Export selection TSV</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- TSV PANEL -->
+  <section class="tsv-panel" data-screen-label="tsv-panel">
+    <div class="tsv-header">
+      <div>
+        <div class="tsv-header-title">electrodes.tsv <span style="color:var(--muted);margin-left:8px;font-size:10px;letter-spacing:0.1em;">BIDS-EEG</span></div>
+        <div class="tsv-header-sub" id="tsv-sub">—</div>
+      </div>
+      <div class="tsv-actions">
+        <button class="btn" id="copy-tsv">Copy</button>
+        <button class="btn primary" id="download-tsv">Download .tsv</button>
+        <button class="btn" id="download-json">coordsystem.json</button>
+      </div>
+    </div>
+    <div class="tsv-view" id="tsv-view"></div>
+  </section>
+</div>
+
+<script>
+/* EDITMODE defaults — persisted via host */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "montage": "10-20",
+  "headOpacity": 0.6,
+  "dotSize": 0.6,
+  "labelDensity": "smart",
+  "colorMode": "region",
+  "showLandmarks": true,
+  "showHead": true
+}/*EDITMODE-END*/;
+
+/* =========== State =========== */
+const state = {
+  montage: TWEAK_DEFAULTS.montage,
+  search: '',
+  selected: new Set(),
+  dimmedRegions: new Set(),
+};
+
+/* =========== Init =========== */
+const stageEl = document.getElementById('stage');
+const stage2d = document.getElementById('stage-2d');
+EEGTopo2D.init(stage2d);
+
+/* Montage list */
+const montageList = document.getElementById('montage-list');
+const MONTAGE_ORDER = ['10-20', '10-10', '10-05', 'biosemi16', 'biosemi32', 'biosemi64', 'biosemi128', 'egi128'];
+function renderMontageButton(btn, label, count) {
+  btn.textContent = '';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const countEl = document.createElement('span');
+  countEl.className = 'count';
+  countEl.textContent = count;
+  btn.append(name, countEl);
+}
+
+MONTAGE_ORDER.forEach(key => {
+  const m = MONTAGES[key];
+  const btn = document.createElement('button');
+  btn.className = 'montage-btn';
+  btn.dataset.key = key;
+  renderMontageButton(btn, m.label, m.count);
+  btn.addEventListener('click', () => setMontage(key));
+  montageList.appendChild(btn);
+});
+
+/* ========= BIDS loader wiring (electrodes.tsv + coordsystem.json) ========= */
+const LOADED_KEY = '__loaded__';
+const loadBtn = document.getElementById('load-bids-btn');
+const loadInput = document.getElementById('load-bids-input');
+const loadStatus = document.getElementById('load-bids-status');
+
+loadBtn.addEventListener('click', () => loadInput.click());
+loadInput.addEventListener('change', (e) => {
+  handleBidsFiles([...e.target.files]);
+  e.target.value = '';                      // allow reloading the same file
+});
+
+let dragDepth = 0;
+function draggingFiles(e) {
+  if (!e.dataTransfer || !e.dataTransfer.types) return false;
+  return Array.from(e.dataTransfer.types).includes('Files');
+}
+document.addEventListener('dragenter', (e) => {
+  if (!draggingFiles(e)) return;
+  dragDepth++;
+  document.body.classList.add('drag-active');
+});
+document.addEventListener('dragleave', (e) => {
+  if (!draggingFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) document.body.classList.remove('drag-active');
+});
+document.addEventListener('dragover', (e) => {
+  if (draggingFiles(e)) e.preventDefault();
+});
+document.addEventListener('drop', (e) => {
+  dragDepth = 0;
+  document.body.classList.remove('drag-active');
+  if (!draggingFiles(e)) return;
+  e.preventDefault();
+  handleBidsFiles([...e.dataTransfer.files]);
+});
+
+async function handleBidsFiles(files) {
+  const tsv  = files.find(f => /\.tsv$/i.test(f.name));
+  const json = files.find(f => /\.json$/i.test(f.name));
+  if (!tsv) {
+    showLoadError('Need an electrodes.tsv file');
+    return;
+  }
+  try {
+    const tsvText = await tsv.text();
+    const coordsystemJson = json ? JSON.parse(await json.text()) : null;
+    const label = tsv.name.replace(/_electrodes\.tsv$/i, '').replace(/\.tsv$/i, '').slice(0, 28) || 'Loaded';
+    const montage = BIDSLoader.buildMontageFromBIDS({ tsvText, coordsystemJson, label });
+    MONTAGES[LOADED_KEY] = montage;
+    upsertLoadedMontageButton(montage);
+    setMontage(LOADED_KEY);
+    // Success — clear any prior error surface.
+    clearLoadError();
+    loadStatus.style.color = 'var(--muted)';
+    const unitsNote = montage.unitsMismatch
+      ? `detected ${montage.inferredUnits} (declared ${montage.declaredUnits})`
+      : `units: ${montage.inferredUnits}`;
+    const axisNote = montage.axisTransform ? ` · ${montage.axisTransform}` : '';
+    const regionNote = montage.regionStrategy === 'position' ? ' · regions by position' : '';
+    loadStatus.textContent = `${montage.count}ch · ${montage.space} · ${unitsNote}${axisNote}${regionNote}`;
+  } catch (err) {
+    console.error(err);
+    showLoadError(err.message);
+  }
+}
+
+/* Shared error-surface helpers. Both the status line (rail-visible) and the
+   embed banner get the same message so errors are discoverable in either
+   display mode. */
+function showLoadError(msg) {
+  if (loadStatus) {
+    loadStatus.style.color = 'var(--danger, #b94a34)';
+    loadStatus.textContent = msg;
+  }
+  const banner = document.getElementById('embed-error');
+  if (banner) {
+    banner.hidden = false;
+    banner.textContent = msg;
+  }
+}
+function clearLoadError() {
+  const banner = document.getElementById('embed-error');
+  if (banner) { banner.hidden = true; banner.textContent = ''; }
+}
+
+function upsertLoadedMontageButton(montage) {
+  let btn = document.querySelector(`.montage-btn[data-key="${LOADED_KEY}"]`);
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.className = 'montage-btn';
+    btn.dataset.key = LOADED_KEY;
+    btn.addEventListener('click', () => setMontage(LOADED_KEY));
+    montageList.insertBefore(btn, montageList.firstChild);
+  }
+  renderMontageButton(btn, montage.label, montage.count);
+}
+
+/* Scene events */
+EEGTopo2D.on('hover', (data) => {
+  const tt = document.getElementById('tooltip');
+  if (!data) { tt.classList.remove('visible'); return; }
+  tt.classList.add('visible');
+  tt.querySelector('.tt-name').textContent = data.name;
+  tt.querySelector('.tt-coords').textContent = `x ${data.x}  y ${data.y}  z ${data.z}`;
+  const rect = stageEl.getBoundingClientRect();
+  tt.style.left = (data.clientX - rect.left) + 'px';
+  tt.style.top  = (data.clientY - rect.top) + 'px';
+});
+
+EEGTopo2D.on('click', (data) => {
+  if (!data) { /* empty-space click: clear if not modifier */ return; }
+  const { name, shift, meta } = data;
+  if (shift || meta) {
+    if (state.selected.has(name)) state.selected.delete(name);
+    else state.selected.add(name);
+  } else {
+    if (state.selected.size === 1 && state.selected.has(name)) {
+      state.selected.clear();
+    } else {
+      state.selected.clear();
+      state.selected.add(name);
+    }
+  }
+  applySelection();
+});
+
+/* Search */
+document.getElementById('search').addEventListener('input', (e) => {
+  state.search = e.target.value.trim().toLowerCase();
+  applyFilter();
+  renderChList();
+});
+
+/* Legend — dim regions */
+document.querySelectorAll('#legend .legend-item').forEach(li => {
+  li.addEventListener('click', () => {
+    const r = li.dataset.region;
+    if (state.dimmedRegions.has(r)) { state.dimmedRegions.delete(r); li.classList.remove('off'); }
+    else { state.dimmedRegions.add(r); li.classList.add('off'); }
+    EEGTopo2D.setDimmedRegions([...state.dimmedRegions]);
+  });
+});
+
+/* Right-rail actions */
+document.getElementById('clear-sel').addEventListener('click', () => {
+  state.selected.clear(); applySelection();
+});
+document.getElementById('act-select-frontal').addEventListener('click', () => {
+  currentElectrodes().forEach(e => { if (e.region === 'frontal') state.selected.add(e.name); });
+  applySelection();
+});
+document.getElementById('act-select-left').addEventListener('click', () => {
+  currentElectrodes().forEach(e => { if (e.x < -0.002) state.selected.add(e.name); });
+  applySelection();
+});
+document.getElementById('act-invert').addEventListener('click', () => {
+  const next = new Set();
+  currentElectrodes().forEach(e => { if (!state.selected.has(e.name)) next.add(e.name); });
+  state.selected = next; applySelection();
+});
+document.getElementById('act-export-selected').addEventListener('click', () => {
+  downloadTSV(true);
+});
+
+/* TSV download */
+document.getElementById('download-tsv').addEventListener('click', () => downloadTSV(false));
+document.getElementById('copy-tsv').addEventListener('click', async () => {
+  const tsv = buildTSV(false);
+  try { await navigator.clipboard.writeText(tsv); flash('copy-tsv', 'Copied!'); } catch(_) { flash('copy-tsv', 'Fail'); }
+});
+document.getElementById('download-json').addEventListener('click', () => downloadCoordsystemJSON());
+
+function flash(id, text) {
+  const b = document.getElementById(id);
+  const orig = b.textContent;
+  b.textContent = text;
+  setTimeout(() => b.textContent = orig, 1200);
+}
+
+/* ========== Core renders ========== */
+function currentElectrodes() {
+  return MONTAGES[state.montage].electrodes;
+}
+
+function setMontage(key) {
+  state.montage = key;
+  state.selected.clear();
+  document.querySelectorAll('.montage-btn').forEach(b => b.classList.toggle('active', b.dataset.key === key));
+  EEGTopo2D.setMontage(key, MONTAGES[key]);
+  document.getElementById('pill-montage').textContent = MONTAGES[key].label + ' · ' + MONTAGES[key].count + 'ch';
+  document.getElementById('channel-count').textContent = MONTAGES[key].count;
+  document.getElementById('stat-total').textContent = MONTAGES[key].count;
+  persistTweak('montage', key);
+  renderChList();
+  renderTSV();
+  applySelection();
+  applyFilter();
+  updateStats();
+  updateStageCaption();
+}
+
+function updateStageCaption() {
+  const caption = document.getElementById('stage-caption');
+  if (!caption) return;
+  const m = MONTAGES[state.montage];
+  if (!m) { caption.textContent = ''; return; }
+  const parts = [`n = ${m.count}`];
+  const rMeters = m.sphere?.R ?? HEAD_RADIUS_M;
+  parts.push(`r = ${(rMeters * 1000).toFixed(0)} mm`);
+  if (m.space) parts.push(m.space);
+  caption.textContent = '';
+  parts.forEach((p, i) => {
+    if (i > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'sep'; sep.textContent = '·';
+      caption.appendChild(sep);
+    }
+    const val = document.createElement('span');
+    val.className = 'val'; val.textContent = p;
+    caption.appendChild(val);
+  });
+}
+
+function applySelection() {
+  EEGTopo2D.setSelected([...state.selected]);
+  document.getElementById('pill-selected').textContent = state.selected.size + ' selected';
+  document.getElementById('stat-sel').textContent = state.selected.size;
+  renderSelectedCard();
+  renderChList();
+  renderTSV();
+}
+
+function applyFilter() {
+  if (!state.search) { EEGTopo2D.setFiltered(null); return; }
+  const q = state.search;
+  const names = currentElectrodes()
+    .filter(e => e.name.toLowerCase().includes(q) || e.region.startsWith(q))
+    .map(e => e.name);
+  EEGTopo2D.setFiltered(names);
+}
+
+function renderChList() {
+  const list = document.getElementById('ch-list');
+  list.innerHTML = '';
+  const q = state.search;
+  currentElectrodes().forEach(e => {
+    const chip = document.createElement('div');
+    chip.className = 'ch-chip';
+    const hit = q && (e.name.toLowerCase().includes(q) || e.region.startsWith(q));
+    if (hit) chip.classList.add('hit');
+    if (q && !hit) chip.classList.add('dimmed');
+    if (state.selected.has(e.name)) chip.classList.add('selected');
+    chip.innerHTML = `<span class="ch-dot" style="background:${regionToColor(e.region)}"></span>${e.name}`;
+    chip.addEventListener('click', () => {
+      if (state.selected.has(e.name)) state.selected.delete(e.name);
+      else state.selected.add(e.name);
+      applySelection();
+    });
+    list.appendChild(chip);
+  });
+}
+
+function regionToColor(r) {
+  const map = {
+    frontal: 'oklch(0.60 0.14 265)',
+    central: 'oklch(0.62 0.14 150)',
+    parietal: 'oklch(0.62 0.15 85)',
+    occipital: 'oklch(0.58 0.15 25)',
+    reference: 'oklch(0.50 0.02 270)',
+    egi: 'oklch(0.55 0.15 300)',
+    other: 'oklch(0.55 0.02 270)',
+  };
+  return map[r] || map.other;
+}
+
+function renderSelectedCard() {
+  const card = document.getElementById('selected-card');
+  const sel = [...state.selected];
+  if (sel.length === 0) {
+    document.getElementById('sel-name').textContent = '—';
+    document.getElementById('sel-region').textContent = 'Click an electrode';
+    document.getElementById('sel-coords').style.display = 'none';
+    return;
+  }
+  const el = currentElectrodes().find(e => e.name === sel[sel.length - 1]);
+  if (!el) return;
+  document.getElementById('sel-name').textContent = el.name + (sel.length > 1 ? `  +${sel.length-1}` : '');
+  document.getElementById('sel-region').textContent = el.region;
+  document.getElementById('sel-coords').style.display = 'grid';
+  document.getElementById('sel-x').textContent = el.x.toFixed(4) + ' m';
+  document.getElementById('sel-y').textContent = el.y.toFixed(4) + ' m';
+  document.getElementById('sel-z').textContent = el.z.toFixed(4) + ' m';
+  const az = Math.atan2(el.ux, el.uy) * 180 / Math.PI;
+  const elv = Math.asin(el.uz) * 180 / Math.PI;
+  document.getElementById('sel-az').textContent = az.toFixed(1) + '°';
+  document.getElementById('sel-el').textContent = elv.toFixed(1) + '°';
+}
+
+function updateStats() {
+  const els = currentElectrodes();
+  const r = els.reduce((s,e) => s + Math.hypot(e.x,e.y,e.z), 0) / els.length;
+  document.getElementById('stat-r').textContent = (r*100).toFixed(1) + ' cm';
+  const left = els.filter(e => e.x < -0.001).length;
+  const right = els.filter(e => e.x > 0.001).length;
+  document.getElementById('stat-hemi').textContent = `${left}/${right}`;
+}
+
+/* ========== TSV ========== */
+function buildTSV(onlySelected) {
+  const els = onlySelected ? currentElectrodes().filter(e => state.selected.has(e.name)) : currentElectrodes();
+  const header = ['name', 'x', 'y', 'z', 'type', 'material'];
+  const rows = [header.join('\t')];
+  els.forEach(e => rows.push([e.name, e.x, e.y, e.z, 'EEG', 'Ag/AgCl'].join('\t')));
+  return rows.join('\n') + '\n';
+}
+
+function renderTSV() {
+  const els = currentElectrodes();
+  const view = document.getElementById('tsv-view');
+  // Only render first ~ N rows for perf; table is scrollable
+  const MAX = 400;
+  const rows = els.slice(0, MAX).map(e => {
+    const cls = state.selected.has(e.name) ? 'selected' : '';
+    return `<tr data-name="${e.name}" class="${cls}"><td>${e.name}</td><td>${e.x}</td><td>${e.y}</td><td>${e.z}</td><td>EEG</td><td>Ag/AgCl</td></tr>`;
+  }).join('');
+  view.innerHTML = `
+    <table>
+      <thead><tr><th>name</th><th>x</th><th>y</th><th>z</th><th>type</th><th>material</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>${els.length > MAX ? `<div style="color:var(--muted);padding-top:8px">…${els.length - MAX} more rows (downloaded TSV includes all)</div>` : ''}
+  `;
+  view.querySelectorAll('tbody tr').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const n = tr.dataset.name;
+      if (state.selected.has(n)) state.selected.delete(n);
+      else state.selected.add(n);
+      applySelection();
+    });
+  });
+  document.getElementById('tsv-sub').textContent =
+    `${els.length} electrodes · RAS+ meters · units=m · head_radius=${HEAD_RADIUS_M}m`;
+}
+
+function downloadTSV(onlySelected) {
+  const tsv = buildTSV(onlySelected);
+  const suffix = onlySelected ? `_${state.selected.size}ch` : '';
+  const fname = `sub-01_task-rest_${state.montage}${suffix}_electrodes.tsv`;
+  const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+
+function downloadCoordsystemJSON() {
+  const m = MONTAGES[state.montage];
+  const space = m.space || 'Other';
+  const units = m.units || 'm';
+  const obj = {
+    EEGCoordinateSystem: space,
+    EEGCoordinateUnits: units,
+    EEGCoordinateSystemDescription: "RAS+ head-based coordinates. Origin at head center. +X right, +Y anterior (nasion), +Z superior (vertex).",
+    AnatomicalLandmarkCoordinates: {
+      NAS: [0, HEAD_RADIUS_M * 1.04, 0],
+      LPA: [-HEAD_RADIUS_M * 1.04, 0, 0],
+      RPA: [ HEAD_RADIUS_M * 1.04, 0, 0],
+    },
+    AnatomicalLandmarkCoordinateSystem: space,
+    AnatomicalLandmarkCoordinateUnits: units,
+    FiducialsDescription: "Synthetic landmarks derived from the spherical head model.",
+    Montage: m.label,
+  };
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `sub-01_task-rest_${state.montage}_coordsystem.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+
+/* ========== Tweaks panel ========== */
+const tweaksPanel = document.getElementById('tweaks-panel');
+window.addEventListener('message', (e) => {
+  if (e.data?.type === '__activate_edit_mode') tweaksPanel.classList.add('visible');
+  else if (e.data?.type === '__deactivate_edit_mode') tweaksPanel.classList.remove('visible');
+});
+// announce
+setTimeout(() => window.parent.postMessage({ type: '__edit_mode_available' }, '*'), 50);
+
+function persistTweak(key, value) {
+  try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [key]: value } }, '*'); } catch(_){}
+}
+
+document.getElementById('tw-head-opacity').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  EEGTopo2D.setOpts({ headOpacity: v });
+  document.getElementById('val-head').textContent = Math.round(v*100) + '%';
+  persistTweak('headOpacity', v);
+});
+document.getElementById('tw-dot-size').addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  EEGTopo2D.setOpts({ dotSize: v });
+  document.getElementById('val-size').textContent = v.toFixed(1) + '×';
+  persistTweak('dotSize', v);
+});
+
+function setToggleGroup(groupId, val, cb) {
+  document.querySelectorAll(`#${groupId} .view-btn`).forEach(b => {
+    b.classList.toggle('on', b.dataset.val === val);
+  });
+  cb(val);
+}
+document.querySelectorAll('#tw-labels .view-btn').forEach(b => b.addEventListener('click', () => {
+  setToggleGroup('tw-labels', b.dataset.val, v => { EEGTopo2D.setOpts({ labelDensity: v }); persistTweak('labelDensity', v); });
+}));
+document.querySelectorAll('#tw-color .view-btn').forEach(b => b.addEventListener('click', () => {
+  setToggleGroup('tw-color', b.dataset.val, v => { EEGTopo2D.setOpts({ colorMode: v }); persistTweak('colorMode', v); });
+}));
+document.querySelectorAll('#tw-head .view-btn').forEach(b => b.addEventListener('click', () => {
+  setToggleGroup('tw-head', b.dataset.val, v => { EEGTopo2D.setOpts({ showHead: v === 'on' }); persistTweak('showHead', v === 'on'); });
+}));
+document.querySelectorAll('#tw-landmarks .view-btn').forEach(b => b.addEventListener('click', () => {
+  setToggleGroup('tw-landmarks', b.dataset.val, v => { EEGTopo2D.setOpts({ showLandmarks: v === 'on' }); persistTweak('showLandmarks', v === 'on'); });
+}));
+
+/* ========== Boot ========== */
+// Apply initial tweaks
+EEGTopo2D.setOpts({
+  headOpacity: TWEAK_DEFAULTS.headOpacity,
+  dotSize: TWEAK_DEFAULTS.dotSize,
+  labelDensity: TWEAK_DEFAULTS.labelDensity,
+  colorMode: TWEAK_DEFAULTS.colorMode,
+  showLandmarks: TWEAK_DEFAULTS.showLandmarks,
+  showHead: TWEAK_DEFAULTS.showHead,
+});
+document.getElementById('tw-head-opacity').value = TWEAK_DEFAULTS.headOpacity;
+document.getElementById('val-head').textContent = Math.round(TWEAK_DEFAULTS.headOpacity*100) + '%';
+document.getElementById('tw-dot-size').value = TWEAK_DEFAULTS.dotSize;
+document.getElementById('val-size').textContent = TWEAK_DEFAULTS.dotSize.toFixed(1) + '×';
+[['tw-labels', TWEAK_DEFAULTS.labelDensity],
+ ['tw-color', TWEAK_DEFAULTS.colorMode],
+ ['tw-head', TWEAK_DEFAULTS.showHead ? 'on' : 'off'],
+ ['tw-landmarks', TWEAK_DEFAULTS.showLandmarks ? 'on' : 'off']].forEach(([g,v]) => {
+   document.querySelectorAll(`#${g} .view-btn`).forEach(b => b.classList.toggle('on', b.dataset.val === v));
+});
+
+setMontage(state.montage);
+
+/* ===========================================================
+   URL-driven auto-load.
+
+   Three URL shapes, in priority order:
+
+     ?montage=<registry_id>
+         Fetches data.eegdash.org/api/eegdash/montages/<id>, resolves the
+         TSV and coordsystem URLs from the manifest, then loads. Primary
+         shape used by the iframe inside eegdash docs pages.
+
+     ?tsv=<url>&coords=<url>
+         Direct fetch of two files. ?coords= is optional. Useful for
+         ad-hoc testing or datasets not yet in the registry.
+
+     ?demo=<prefix>
+         Loads test-data/<prefix>_electrodes.tsv and
+         test-data/<prefix>_coordsystem.json. Used for local smoke tests.
+
+   file:// origins skip the async flow entirely because fetch() is blocked.
+   =========================================================== */
+const AUTOLOAD_FETCH_TIMEOUT_MS = 15_000;  // abort if S3 hangs longer than this
+const AUTOLOAD_MAX_BYTES        = 5_000_000;  // refuse anything larger than 5 MB
+const AUTOLOAD_MAX_LABEL_LEN    = 28;
+
+/* Apply display-mode flags eagerly so the viewer is already styled by the
+   time the auto-load resolves. Safe even when no auto-load params are set. */
+(() => {
+  const p = new URLSearchParams(location.search);
+  if (p.has('embed'))  document.body.classList.add('embed');
+  if (p.has('tweaks')) document.getElementById('tweaks-panel')?.classList.add('visible');
+})();
+
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const qMontage = params.get('montage');
+  const qTsv     = params.get('tsv');
+  const qCoords  = params.get('coords');
+  const qDemo    = params.get('demo');
+  const qApi     = params.get('api');
+
+  if (!qMontage && !qTsv && !qDemo) return;
+
+  if (location.protocol === 'file:') {
+    console.warn('[auto-load] file:// blocks fetch(); serve over http:// to use URL params.');
+    return;
+  }
+
+  const sources = await resolveAutoloadSources({ qMontage, qTsv, qCoords, qDemo, qApi })
+    .catch(err => { showLoadError(err.message); return null; });
+  if (!sources) return;
+
+  try {
+    const files = await fetchAsFiles(sources);
+    await handleBidsFiles(files);
+  } catch (err) {
+    console.error('[auto-load] failed:', { tsvUrl: sources.tsvUrl, coordsUrl: sources.coordsUrl, err });
+    showLoadError(`Could not load: ${err.message}`);
+  }
+})();
+
+/* Resolve query params to concrete URLs and a display label.
+   Returns { tsvUrl, coordsUrl | null, label }. */
+async function resolveAutoloadSources({ qMontage, qTsv, qCoords, qDemo, qApi }) {
+  if (qMontage) {
+    // Registry lookup. Base URL can be overridden with ?api=… for testing.
+    const apiBase = (qApi || 'https://data.eegdash.org').replace(/\/$/, '');
+    const regUrl = `${apiBase}/api/eegdash/montages/${encodeURIComponent(qMontage)}`;
+    const r = await fetchWithTimeout(regUrl);
+    if (!r.ok) throw new Error(`registry ${regUrl} → ${r.status}`);
+    const doc = await r.json();
+    if (!doc.tsv_url) throw new Error('registry doc missing tsv_url');
+    return { tsvUrl: doc.tsv_url, coordsUrl: doc.coords_url || null, label: doc.label || doc.id || qMontage };
+  }
+  if (qTsv) {
+    // Trust the caller. Accept any scheme so tests can point at localhost.
+    return { tsvUrl: qTsv, coordsUrl: qCoords || null, label: extractLabelFromUrl(qTsv) };
+  }
+  // qDemo — the IIFE guarantees one of the three is present, no fallback throw needed.
+  return {
+    tsvUrl:    `test-data/${qDemo}_electrodes.tsv`,
+    coordsUrl: `test-data/${qDemo}_coordsystem.json`,
+    label:     qDemo,
+  };
+}
+
+/* fetch() wrapped with a 15 s AbortController timeout. */
+async function fetchWithTimeout(url, opts = {}) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), AUTOLOAD_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...opts, signal: ctl.signal });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`timed out after ${AUTOLOAD_FETCH_TIMEOUT_MS / 1000}s: ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* Read a response body as text, rejecting anything bigger than the
+   configured ceiling. Uses Content-Length when present, falls back to
+   measuring the decoded string. */
+async function readTextBounded(resp, labelForError) {
+  const declared = parseInt(resp.headers.get('Content-Length') || '0', 10);
+  if (declared > AUTOLOAD_MAX_BYTES) {
+    throw new Error(`${labelForError} is ${declared} bytes; max is ${AUTOLOAD_MAX_BYTES}`);
+  }
+  const text = await resp.text();
+  if (text.length > AUTOLOAD_MAX_BYTES) {
+    throw new Error(`${labelForError} is ${text.length} bytes; max is ${AUTOLOAD_MAX_BYTES}`);
+  }
+  return text;
+}
+
+/* Fetch the resolved URLs and return File objects that mirror what the
+   drag-drop handler receives. TSV is required; coords JSON is optional
+   (a 404 or a network error on it is non-fatal — the loader falls back
+   to "Other" space and infers units from the data). */
+async function fetchAsFiles({ tsvUrl, coordsUrl, label }) {
+  const tsvResp = await fetchWithTimeout(tsvUrl);
+  if (!tsvResp.ok) throw new Error(`fetch TSV ${tsvUrl} → ${tsvResp.status}`);
+  const tsvText = await readTextBounded(tsvResp, 'TSV');
+  const files = [new File([tsvText], `${label}_electrodes.tsv`, { type: 'text/tab-separated-values' })];
+
+  if (coordsUrl) {
+    try {
+      const jsonResp = await fetchWithTimeout(coordsUrl);
+      if (jsonResp.ok) {
+        const jsonText = await readTextBounded(jsonResp, 'coordsystem');
+        files.push(new File([jsonText], `${label}_coordsystem.json`, { type: 'application/json' }));
+      } else {
+        console.info(`[auto-load] coords not available (${jsonResp.status}); proceeding without`);
+      }
+    } catch (err) {
+      // CORS failure, DNS failure, timeout, etc. — survive gracefully.
+      console.info(`[auto-load] coords fetch threw (${err.message}); proceeding without`);
+    }
+  }
+  return files;
+}
+
+function extractLabelFromUrl(url) {
+  try {
+    const pathname = new URL(url, location.href).pathname;
+    const base = pathname.split('/').pop() || 'loaded';
+    return base.replace(/_electrodes\.tsv$/i, '').replace(/\.tsv$/i, '').slice(0, AUTOLOAD_MAX_LABEL_LEN) || 'loaded';
+  } catch {
+    return 'loaded';
+  }
+}
+
+// showLoadError / clearLoadError defined earlier — they both update the
+// rail-visible status line and the always-on embed-error banner.
+
+</script>
+</body>
+</html>

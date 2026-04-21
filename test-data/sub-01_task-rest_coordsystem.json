@@ -1,0 +1,12 @@
+{
+  "EEGCoordinateSystem": "CapTrak",
+  "EEGCoordinateUnits": "mm",
+  "EEGCoordinateSystemDescription": "CapTrak RAS+ head-based coords. Origin near head center.",
+  "AnatomicalLandmarkCoordinates": {
+    "NAS": [0, 100, 0],
+    "LPA": [-90, 0, 0],
+    "RPA": [90, 0, 0]
+  },
+  "AnatomicalLandmarkCoordinateSystem": "CapTrak",
+  "AnatomicalLandmarkCoordinateUnits": "mm"
+}

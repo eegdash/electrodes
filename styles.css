@@ -1,0 +1,676 @@
+/* EEG Electrode Explorer — main stylesheet */
+:root {
+  --bg: #f6f4ef;
+  --bg-2: #efece5;
+  --ink: #17181a;
+  --ink-2: #3a3d42;
+  --muted: #8b8e94;
+  --ink-3: #b5b8bd;
+  --surface: #fbfaf6;
+  --line: #dedbd2;
+  --line-2: #e8e5dc;
+  --accent: oklch(0.55 0.15 240);
+  --accent-soft: oklch(0.92 0.04 240);
+  --warn: oklch(0.62 0.16 40);
+  --frontal:   oklch(0.60 0.14 265);
+  --central:   oklch(0.62 0.14 150);
+  --parietal:  oklch(0.62 0.15 85);
+  --occipital: oklch(0.58 0.15 25);
+  --reference: oklch(0.50 0.02 270);
+  --egi: oklch(0.55 0.15 300);
+  --other: oklch(0.55 0.02 270);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  grid-template-rows: 48px 1fr 220px;
+  grid-template-areas:
+    "header header header"
+    "left   stage  right"
+    "left   tsv    right";
+  height: 100vh;
+  width: 100vw;
+  gap: 0;
+}
+
+/* Header */
+.header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  gap: 16px;
+  background: var(--bg);
+  z-index: 5;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand-mark {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0, var(--accent) 70%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
+  transform: translateY(3px);
+}
+.brand-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.brand-sub {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.header-right {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.pill {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--ink-2);
+  letter-spacing: 0.04em;
+  background: var(--bg);
+}
+
+/* Rails */
+.rail {
+  padding: 18px 16px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.rail.left { grid-area: left; border-right: 1px solid var(--line); }
+.rail.right { grid-area: right; border-left: 1px solid var(--line); }
+
+.rail-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.rail-section { margin-bottom: 22px; }
+
+/* Montage picker */
+.montage-list { display: flex; flex-direction: column; gap: 2px; }
+.montage-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+.montage-btn:hover { background: var(--bg-2); }
+.montage-btn.active {
+  background: #fff;
+  border-color: var(--line);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+.montage-btn .count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.montage-btn.active .count { color: var(--accent); }
+
+/* Search */
+.search {
+  position: relative;
+  margin-bottom: 10px;
+}
+.search input {
+  width: 100%;
+  padding: 7px 10px 7px 26px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+.search input:focus { border-color: var(--accent); }
+.search svg {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Channel list */
+.ch-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.ch-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+  color: var(--ink-2);
+  border: 1px solid transparent;
+  background: transparent;
+  user-select: none;
+  transition: background 0.1s;
+}
+.ch-chip:hover { background: var(--bg-2); }
+.ch-chip.selected { background: #fff; border-color: var(--line); color: var(--ink); }
+.ch-chip.dimmed { opacity: 0.35; }
+.ch-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+.ch-chip.hit { background: var(--accent-soft); color: var(--accent); }
+
+/* Stage (3D canvas) */
+.stage {
+  grid-area: stage;
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  overflow: hidden;
+}
+.stage canvas { display: block; }
+
+.stage-overlay {
+  position: absolute;
+  pointer-events: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 10;  /* must sit above .stage-pane (2D SVG / 3D canvas) so buttons catch clicks */
+}
+.stage-overlay.top-left { top: 14px; left: 18px; }
+.stage-overlay.top-right { top: 14px; right: 18px; pointer-events: auto; }
+.stage-overlay.bottom-left { bottom: 14px; left: 18px; display: flex; gap: 10px; align-items: center; }
+.stage-overlay.bottom-right {
+  bottom: 14px; right: 18px;
+  pointer-events: auto;
+  display: flex; gap: 6px;
+}
+
+.axis-swatch {
+  display: inline-flex; gap: 4px; align-items: center;
+  margin-right: 10px;
+}
+.axis-swatch span:first-child {
+  width: 8px; height: 2px; background: currentColor;
+}
+
+.view-btn {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink-2);
+  border-radius: 4px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.view-btn:hover { background: #fff; border-color: var(--ink-2); color: var(--ink); }
+
+/* 3D DOM labels */
+.lbl {
+  position: absolute;
+  left: 0; top: 0;
+  font-family: "IBM Plex Mono", monospace;
+  pointer-events: none;
+  white-space: nowrap;
+  user-select: none;
+  will-change: transform;
+}
+.lbl-electrode {
+  font-size: 10.5px;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg);
+}
+.lbl-electrode.lbl-selected { color: var(--accent); font-weight: 600; }
+.lbl-electrode.lbl-hover { color: #e0521f; font-weight: 600; }
+.lbl-landmark {
+  font-size: 9.5px;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Hover tooltip for electrodes */
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 6px 9px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  z-index: 10;
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity 0.1s;
+}
+.tooltip.visible { opacity: 1; }
+.tooltip .tt-name { font-weight: 600; }
+.tooltip .tt-coords { color: var(--muted); margin-top: 2px; }
+
+/* Right rail — selected channel */
+.selected-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.selected-name {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+}
+.selected-region {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 2px;
+}
+.coord-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin-top: 10px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+.coord-grid dt { color: var(--muted); }
+.coord-grid dd { margin: 0; color: var(--ink); }
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.stat {
+  background: #fff;
+  padding: 10px 12px;
+}
+.stat-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.stat-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 18px;
+  margin-top: 3px;
+}
+
+/* Region legend */
+.legend { display: flex; flex-direction: column; gap: 4px; font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+.legend-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 2px; border-radius: 3px; }
+.legend-item:hover { background: var(--bg-2); }
+.legend-item.off { opacity: 0.35; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 50%; }
+
+/* TSV panel */
+.tsv-panel {
+  grid-area: tsv;
+  border-top: 1px solid var(--line);
+  background: #fff;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+.tsv-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tsv-header-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.tsv-header-sub {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.tsv-actions { margin-left: auto; display: flex; gap: 6px; }
+.btn {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.btn:hover { background: #fff; border-color: var(--ink-2); }
+.btn.primary {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.tsv-view {
+  padding: 12px 16px;
+  overflow: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  min-height: 0;
+  background: #fcfbf8;
+}
+.tsv-view table { border-collapse: collapse; }
+.tsv-view th, .tsv-view td {
+  padding: 2px 14px 2px 0;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.tsv-view thead th {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+.tsv-view tbody tr { cursor: pointer; }
+.tsv-view tbody tr:hover { background: var(--accent-soft); color: var(--ink); }
+.tsv-view tbody tr.selected { background: var(--accent-soft); color: var(--accent); }
+.tsv-view tbody tr.dimmed { opacity: 0.3; }
+
+/* Tweaks panel */
+.tweaks-panel {
+  position: absolute;
+  right: 16px;
+  top: 64px;
+  width: 230px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  z-index: 20;
+  display: none;
+}
+.tweaks-panel.visible { display: block; }
+.tweaks-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.tweak-row { margin-bottom: 10px; }
+.tweak-row label {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+.tweak-row input[type="range"] { width: 100%; }
+.tweak-toggle {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.tweak-toggle .view-btn.on {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+/* scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* =========================================================
+   View containers (2D top / 3D head)
+   ========================================================= */
+.stage-pane {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 2D top-view SVG */
+.topo-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.topo-svg .topo-dot {
+  cursor: pointer;
+  transition: stroke-width 120ms ease;
+}
+
+/* View-mode switcher (top-right of stage) */
+.view-mode-switch {
+  display: inline-flex;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  white-space: nowrap;
+}
+.view-mode-switch .view-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 7px 14px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.view-mode-switch .view-btn + .view-btn {
+  border-left: 1px solid var(--line);
+}
+.view-mode-switch .view-btn.on {
+  background: var(--ink);
+  color: #fff;
+}
+.view-mode-switch .view-btn:hover:not(.on) {
+  color: var(--ink);
+  background: var(--bg-2);
+}
+.view-mode-switch .view-btn:active {
+  transform: translateY(0.5px);
+}
+
+/* =========================================================
+   Drag-and-drop overlay — shows when files are being dragged
+   over the window. Tracks 'body.drag-active' class, toggled
+   by the JS dragenter/leave counter.
+   ========================================================= */
+body.drag-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: color-mix(in oklab, var(--bg) 82%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 90;
+  pointer-events: none;
+  animation: drop-fade-in 140ms ease-out;
+}
+body.drag-active::after {
+  content: "[ DROP ELECTRODES.TSV ]";
+  position: fixed;
+  inset: 24px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--ink);
+  border-radius: 10px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 0.32em;
+  color: var(--ink);
+  font-weight: 500;
+  z-index: 91;
+  pointer-events: none;
+  animation: drop-fade-in 180ms ease-out;
+}
+@keyframes drop-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* =========================================================
+   Stage caption — metadata under the 2D topomap: channel
+   count, fitted head radius, coordinate space. Styled like
+   an engraved instrument legend.
+   ========================================================= */
+.stage-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  pointer-events: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.stage-caption .val { color: var(--ink-2); font-weight: 500; }
+.stage-caption .sep { color: var(--ink-3); font-weight: 400; }
+
+/* =========================================================
+   Embed mode (?embed=1) — iframe layout. Hides navigational
+   chrome so the host page owns that context. Only the
+   topomap + caption are visible by default. ?tweaks=1 makes
+   the tweaks panel visible on top.
+   ========================================================= */
+body.embed .rail,
+body.embed .tsv-panel,
+body.embed .header-right,
+body.embed .brand-sub,
+body.embed #stage-hint {
+  display: none;
+}
+body.embed .app {
+  grid-template-columns: 0 1fr 0;
+  grid-template-rows: 34px 1fr 0;
+}
+body.embed .header {
+  padding: 0 12px;
+  min-height: 34px;
+}
+body.embed .brand-title { font-size: 11px; }
+
+/* Error banner used in embed mode — when the rails are hidden
+   the status line isn't visible, so errors need their own
+   surface. Also appears in non-embed mode as a redundant cue
+   (it's styled to be visible without being intrusive). */
+.embed-error {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 8px 12px;
+  background: #fff5f2;
+  color: var(--danger, #b94a34);
+  border: 1px solid var(--danger, #b94a34);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  z-index: 200;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  animation: drop-fade-in 180ms ease-out;
+}
+.embed-error[hidden] { display: none; }

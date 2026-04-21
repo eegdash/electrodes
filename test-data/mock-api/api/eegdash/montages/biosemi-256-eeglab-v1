@@ -1,0 +1,13 @@
+{
+  "id": "biosemi-256-eeglab-v1",
+  "hash": "fake-sha1-for-testing",
+  "n_channels": 256,
+  "space_declared": "CTF",
+  "units_declared": "mm",
+  "label": "BioSemi 256 (EEGLAB space)",
+  "representative_dataset": "ds002578",
+  "representative_subject": "sub-002",
+  "tsv_url": "http://localhost:9876/test-data/ds002578_sub-002_electrodes.tsv",
+  "coords_url": "http://localhost:9876/test-data/ds002578_sub-002_coordsystem.json",
+  "first_seen_at": "2026-04-21T00:00:00Z"
+}
