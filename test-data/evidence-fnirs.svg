@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.25 -1.25 2.5 2.5" width="720" height="720" style="background:#faf9f5;font-family:-apple-system,sans-serif">
+<defs><style>.lbl{font-size:0.028px;fill:#17181a;pointer-events:none;paint-order:stroke;stroke:#faf9f5;stroke-width:0.012;stroke-linejoin:round}</style></defs>
+<rect x="-1" y="-1" width="2" height="2" rx="0.02" fill="#f7f6f2" stroke="#17181a" stroke-width="0.008" opacity="0.6"/>
+<line x1="0" y1="-1" x2="0" y2="1" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<line x1="-1" y1="0" x2="1" y2="0" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<circle cx="-0.2250" cy="-0.3750" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.2250" cy="-0.3750" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.4500" cy="-0.0750" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.4500" cy="-0.0750" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.2250" cy="0.2250" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.2250" cy="0.2250" r="0.018" fill="#d96a4c" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.0000" cy="-0.3750" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.3750" cy="-0.2250" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.3750" cy="-0.2250" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.3750" cy="0.0750" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.3750" cy="0.0750" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.0000" cy="0.3750" r="0.018" fill="#4a7fa8" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<text x="-0.2250" y="-0.4050" text-anchor="middle" class="lbl">S1</text>
+<text x="-1.2" y="1.2" font-size="0.055" fill="#17181a" font-weight="600">fNIRS — sources (orange) + detectors (blue)</text>
+<text x="-1.2" y="1.245" font-size="0.04" fill="#8a8a85">12 optodes · space=CapTrak · layout=flat</text>
+</svg>

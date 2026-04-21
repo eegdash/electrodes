@@ -9,8 +9,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
 <link rel="stylesheet" href="styles.css?v=4" />
 <script src="montages.js?v=4"></script>
-<script src="bids-loader.js?v=1"></script>
-<script src="topo2d.js?v=5"></script>
+<script src="bids-loader.js?v=2"></script>
+<script src="topo2d.js?v=6"></script>
 </head>
 <body>
 
@@ -441,8 +441,14 @@ function updateStageCaption() {
   const m = MONTAGES[state.montage];
   if (!m) { caption.textContent = ''; return; }
   const parts = [`n = ${m.count}`];
-  const rMeters = m.sphere?.R ?? HEAD_RADIUS_M;
-  parts.push(`r = ${(rMeters * 1000).toFixed(0)} mm`);
+  // Sphere layouts get a real radius. Flat layouts get the modality tag
+  // instead — the fitted-sphere radius isn't meaningful for body-space
+  // or brain-space data.
+  if (m.sphere) {
+    parts.push(`r = ${(m.sphere.R * 1000).toFixed(0)} mm`);
+  } else if (m.modality) {
+    parts.push(m.modality);
+  }
   if (m.space) parts.push(m.space);
   caption.textContent = '';
   parts.forEach((p, i) => {
@@ -533,7 +539,22 @@ function renderSelectedCard() {
 }
 
 function updateStats() {
+  const m = MONTAGES[state.montage];
   const els = currentElectrodes();
+  // "Mean radius" and "Hemisphere" only make sense for spherical scalp
+  // layouts. Flat layouts (iEEG/EMG/fNIRS) show a body-space bounding-box
+  // span instead and skip the hemisphere split entirely.
+  if (m && m.layoutStyle === 'flat') {
+    const xs = els.map(e => e.x), ys = els.map(e => e.y), zs = els.map(e => e.z);
+    const span = Math.max(
+      Math.max(...xs) - Math.min(...xs),
+      Math.max(...ys) - Math.min(...ys),
+      Math.max(...zs) - Math.min(...zs),
+    );
+    document.getElementById('stat-r').textContent = `span ${span.toFixed(3)} ${m.units || ''}`.trim();
+    document.getElementById('stat-hemi').textContent = '—';
+    return;
+  }
   const r = els.reduce((s,e) => s + Math.hypot(e.x,e.y,e.z), 0) / els.length;
   document.getElementById('stat-r').textContent = (r*100).toFixed(1) + ' cm';
   const left = els.filter(e => e.x < -0.001).length;

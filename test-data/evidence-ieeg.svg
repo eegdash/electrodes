@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.25 -1.25 2.5 2.5" width="720" height="720" style="background:#faf9f5;font-family:-apple-system,sans-serif">
+<defs><style>.lbl{font-size:0.028px;fill:#17181a;pointer-events:none;paint-order:stroke;stroke:#faf9f5;stroke-width:0.012;stroke-linejoin:round}</style></defs>
+<rect x="-1" y="-1" width="2" height="2" rx="0.02" fill="#f7f6f2" stroke="#17181a" stroke-width="0.008" opacity="0.6"/>
+<line x1="0" y1="-1" x2="0" y2="1" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<line x1="-1" y1="0" x2="1" y2="0" stroke="#aaa" stroke-width="0.004" stroke-dasharray="0.02 0.02" opacity="0.35"/>
+<circle cx="-0.3536" cy="-0.0750" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.3857" cy="-0.1393" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.4179" cy="-0.2036" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.4500" cy="-0.2679" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.2464" cy="-0.0536" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.2786" cy="-0.1179" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="-0.3107" cy="-0.1821" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.4500" cy="0.2679" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.4286" cy="0.2464" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.4071" cy="0.2250" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.3857" cy="0.2036" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<circle cx="0.3643" cy="0.1821" r="0.018" fill="#c46a57" stroke="#17181a" stroke-opacity="0.5" stroke-width="0.003"/>
+<text x="-0.3536" y="-0.1050" text-anchor="middle" class="lbl">LGA1</text>
+<text x="-1.2" y="1.2" font-size="0.055" fill="#17181a" font-weight="600">iEEG — ACPC grid + depth electrodes</text>
+<text x="-1.2" y="1.245" font-size="0.04" fill="#8a8a85">12 electrodes · space=ACPC · layout=flat</text>
+</svg>

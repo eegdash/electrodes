@@ -19,7 +19,7 @@
   // --- State --------------------------------------------------
   let container = null;
   let svg = null;
-  let gOutline = null;   // head outline (circle, nose, ears)
+  let gOutline = null;   // head outline (circle, nose, ears) in sphere mode
   let gElectrodes = null;
   let gLabels = null;
   let gLandmarks = null;
@@ -29,6 +29,8 @@
   let dimmedRegions = new Set();
   let hovered = null;
   let listeners = { hover: [], click: [] };
+  let layoutStyle = 'sphere';   // 'sphere' (EEG/MEG) | 'flat' (iEEG/EMG/fNIRS)
+  let currentModality = 'eeg';  // drives flat-mode head-reference (fnirs/ieeg yes, emg no)
 
   let opts = {
     colorMode: 'region',
@@ -45,16 +47,20 @@
   // +px = right. Electrodes below the equator (uz < 0) are clipped to the
   // outer ring, which matches how EEGLAB draws 10-10/10-05 ears.
   function project(u) {
-    // Elevation from vertex (0 = Cz, pi/2 = equator).
-    const uz = Math.max(-1, Math.min(1, u.uz));
-    const theta = Math.acos(uz); // 0..pi
-    // Azimuth (atan2 x, y). In EEGLAB the head is viewed from above;
-    // +Y is forward (up on screen), +X is right.
-    const az = Math.atan2(u.ux, u.uy);
-    // Normalize radius so theta = pi/2 (equator) sits on the head circle.
-    // Clamp to 1 for sub-equator points (e.g. T9/T10, inion).
-    const r = Math.min(1, theta / (Math.PI / 2));
-    return { x: r * Math.sin(az), y: -r * Math.cos(az) };
+    // Sphere-mode (EEG / MEG scalp): azimuthal-equidistant projection.
+    // Elevation from vertex (0 = Cz, pi/2 = equator), azimuth via atan2.
+    if (layoutStyle !== 'flat') {
+      const uz = Math.max(-1, Math.min(1, u.uz));
+      const theta = Math.acos(uz);                     // 0..pi
+      const az = Math.atan2(u.ux, u.uy);
+      const r = Math.min(1, theta / (Math.PI / 2));   // clamp below-equator
+      return { x: r * Math.sin(az), y: -r * Math.cos(az) };
+    }
+    // Flat mode (iEEG/EMG/fNIRS): ux/uy already pre-normalised into the
+    // SVG viewbox by the loader's flat pipeline. No projection, no clamp
+    // — but flip the Y axis so +Y reads as "up" on screen to match the
+    // sphere-mode convention.
+    return { x: u.ux, y: -u.uy };
   }
 
   // --- Colors -------------------------------------------------
@@ -77,10 +83,22 @@
   const MONO_STROKE = 'oklch(0.28 0.015 70)';
   const SEL_FILL = 'oklch(0.58 0.17 45)';
 
+  // fNIRS type-based palette — sources are near-infrared emitters (warm),
+  // detectors are photodetectors (cool). Using the same hue families as
+  // frontal/occipital for familiarity.
+  const NIRS_SOURCE_FILL   = 'oklch(0.62 0.17 40)';
+  const NIRS_DETECTOR_FILL = 'oklch(0.58 0.14 245)';
+
   function colorFor(el) {
     if (opts.colorMode === 'uniform') return MONO_FILL;
     if (opts.colorMode === 'highlight') {
       return selected.has(el.name) ? SEL_FILL : MONO_FILL;
+    }
+    // fNIRS: source/detector distinction dominates when type is present.
+    if (currentModality === 'nirs' || currentModality === 'fnirs') {
+      const t = (el.type || '').toLowerCase();
+      if (t.includes('source')) return NIRS_SOURCE_FILL;
+      if (t.includes('detector')) return NIRS_DETECTOR_FILL;
     }
     return REGION_COLORS[el.region] || REGION_COLORS.other;
   }
@@ -94,6 +112,15 @@
   function buildOutline() {
     const NS = 'http://www.w3.org/2000/svg';
     while (gOutline.firstChild) gOutline.removeChild(gOutline.firstChild);
+
+    // Flat layouts (iEEG / EMG / fNIRS) don't have a scalp; render a
+    // neutral bounding box + axis ticks instead of the head-circle
+    // chrome.
+    if (layoutStyle === 'flat') {
+      _buildFlatOutline(NS);
+      gOutline.style.display = opts.showHead ? '' : 'none';
+      return;
+    }
 
     // Head circle (drawn at Fpz/T7/T8/Oz circumference, EEGLAB-style).
     const circle = document.createElementNS(NS, 'circle');
@@ -187,6 +214,98 @@
     gOutline.style.display = opts.showHead ? '' : 'none';
   }
 
+  // iEEG sensors are in-brain and fNIRS optodes are on the scalp — both
+  // benefit from a faint head silhouette behind the flat scatter so users can
+  // orient "front / back / sides" at a glance. EMG is on limbs/torso and has
+  // no meaningful head reference; it gets a plain bounding box only.
+  const MODALITIES_WITH_HEAD_REFERENCE = new Set(['ieeg', 'nirs', 'fnirs']);
+
+  // --- Flat outline (iEEG / EMG / fNIRS) ---------------------
+  // Neutral bounding box + axis crosshair + optional faint head silhouette.
+  function _buildFlatOutline(NS) {
+    const withHead = MODALITIES_WITH_HEAD_REFERENCE.has(currentModality);
+
+    // Bounding square at ±1 — the loader's flat pipeline clamps to this.
+    const box = document.createElementNS(NS, 'rect');
+    box.setAttribute('x', -1); box.setAttribute('y', -1);
+    box.setAttribute('width', 2); box.setAttribute('height', 2);
+    box.setAttribute('fill', 'var(--surface, #f7f6f2)');
+    box.setAttribute('stroke', 'var(--ink, #17181a)');
+    box.setAttribute('stroke-width', 0.008);
+    box.setAttribute('opacity', opts.headOpacity);
+    box.setAttribute('rx', 0.02);
+    gOutline.appendChild(box);
+
+    // Crosshair through origin — helps the eye parse orientation.
+    for (const [x1, y1, x2, y2] of [[0, -1, 0, 1], [-1, 0, 1, 0]]) {
+      const ln = document.createElementNS(NS, 'line');
+      ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+      ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+      ln.setAttribute('stroke', 'var(--ink-3, #aaa)');
+      ln.setAttribute('stroke-width', 0.004);
+      ln.setAttribute('stroke-dasharray', '0.02 0.02');
+      ln.setAttribute('opacity', 0.35);
+      gOutline.appendChild(ln);
+    }
+
+    if (!withHead) return;
+
+    // Head silhouette as decorative reference for iEEG / fNIRS. The flat
+    // pipeline doesn't project onto the head — this circle is pure visual
+    // orientation, at 0.85 radius so electrodes near the edge of the
+    // bounding box (e.g. subdural grids that extend to cortical surface)
+    // remain clearly distinguishable from the outline.
+    const headR = 0.85;
+    const head = document.createElementNS(NS, 'circle');
+    head.setAttribute('cx', 0); head.setAttribute('cy', 0);
+    head.setAttribute('r', headR);
+    head.setAttribute('fill', 'none');
+    head.setAttribute('stroke', 'var(--ink-2, #3a3d42)');
+    head.setAttribute('stroke-width', 0.006);
+    head.setAttribute('stroke-dasharray', '0.02 0.02');
+    head.setAttribute('opacity', 0.5);
+    gOutline.appendChild(head);
+
+    // Nose at the top (+Y). Y axis in flat mode is screen-up thanks to
+    // the project()'s y-flip, so a triangular peak at -Y (screen-up)
+    // reads as "front of head".
+    const nose = document.createElementNS(NS, 'path');
+    nose.setAttribute(
+      'd',
+      `M ${-0.12 * headR} ${-headR * 0.995} ` +
+      `Q ${-0.05 * headR} ${-headR * 1.08}, 0 ${-headR * 1.12} ` +
+      `Q ${0.05 * headR} ${-headR * 1.08}, ${0.12 * headR} ${-headR * 0.995}`
+    );
+    nose.setAttribute('fill', 'none');
+    nose.setAttribute('stroke', 'var(--ink-2, #3a3d42)');
+    nose.setAttribute('stroke-width', 0.006);
+    nose.setAttribute('stroke-linecap', 'round');
+    nose.setAttribute('opacity', 0.5);
+    gOutline.appendChild(nose);
+
+    // Ears at ±X — faint arcs.
+    for (const sign of [-1, 1]) {
+      const ear = document.createElementNS(NS, 'path');
+      const x1 = sign * headR * 0.995;
+      ear.setAttribute(
+        'd',
+        `M ${x1} ${-0.13 * headR} ` +
+        `C ${sign * headR * 1.06} ${-0.09 * headR}, ` +
+        `${sign * headR * 1.08} ${0.02 * headR}, ` +
+        `${sign * headR * 1.07} ${0.09 * headR} ` +
+        `C ${sign * headR * 1.06} ${0.15 * headR}, ` +
+        `${sign * headR * 1.04} ${0.18 * headR}, ` +
+        `${x1} ${0.18 * headR}`
+      );
+      ear.setAttribute('fill', 'none');
+      ear.setAttribute('stroke', 'var(--ink-2, #3a3d42)');
+      ear.setAttribute('stroke-width', 0.006);
+      ear.setAttribute('stroke-linecap', 'round');
+      ear.setAttribute('opacity', 0.5);
+      gOutline.appendChild(ear);
+    }
+  }
+
   // --- Landmarks ---------------------------------------------
   const LANDMARKS = [
     { name: 'Nasion', x: 0,     y: -1.06, anchor: 'middle', baseline: 'bottom' },
@@ -198,6 +317,12 @@
   function buildLandmarks() {
     const NS = 'http://www.w3.org/2000/svg';
     while (gLandmarks.firstChild) gLandmarks.removeChild(gLandmarks.firstChild);
+    // Flat layouts don't have nasion/inion/LPA/RPA — they're scalp-specific.
+    if (layoutStyle === 'flat') {
+      gLandmarks.style.display = 'none';
+      return;
+    }
+    gLandmarks.style.display = opts.showLandmarks ? '' : 'none';
     LANDMARKS.forEach(lm => {
       const t = document.createElementNS(NS, 'text');
       t.setAttribute('x', lm.x);
@@ -394,6 +519,10 @@
 
   api.setMontage = function (key, data) {
     electrodes = (data.electrodes || []).map(e => ({ ...e }));
+    // Built-in montages (no layoutStyle set) render as sphere; only
+    // loaded non-scalp montages flip to flat.
+    layoutStyle = data.layoutStyle === 'flat' ? 'flat' : 'sphere';
+    currentModality = (data.modality || 'eeg').toLowerCase();
     buildOutline();
     buildLandmarks();
     buildElectrodes();

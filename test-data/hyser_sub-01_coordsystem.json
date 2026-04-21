@@ -1,0 +1,5 @@
+{
+  "EMGCoordinateSystem": "Other",
+  "EMGCoordinateUnits": "percent",
+  "EMGCoordinateSystemDescription": "Anatomical forearm coordinate system. x: Radial Styloid Process (RSP) to Ulnar Styloid Process (USP). y: Olecranon Process to Cubital Fossa (along forearm long axis, right-hand rule). z: midpoint of RSP-USP toward Lateral Humerus Epicondyle (LHE)."
+}

@@ -29,6 +29,12 @@
     }
     const iType = col('type'), iMat = col('material');
 
+    // Optional BIDS columns we preserve if present: `coordinate_system` and
+    // `group` drive multi-frame EMG panelling; `hemisphere` helps iEEG.
+    const iCoordSys = headers.indexOf('coordinate_system');
+    const iGroup = headers.indexOf('group');
+    const iHemi = headers.indexOf('hemisphere');
+
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split('\t');
@@ -38,11 +44,21 @@
       const z = parseFloat(c[iZ]);
       // BIDS uses "n/a" for missing; parseFloat → NaN → skip.
       if (!name || !isFinite(x) || !isFinite(y) || !isFinite(z)) continue;
-      rows.push({
+      const row = {
         name, x, y, z,
         type: iType >= 0 ? (c[iType] || '').trim() : '',
         material: iMat >= 0 ? (c[iMat] || '').trim() : '',
-      });
+      };
+      if (iCoordSys >= 0 && c[iCoordSys] && c[iCoordSys].trim() && c[iCoordSys].trim().toLowerCase() !== 'n/a') {
+        row.coordinate_system = c[iCoordSys].trim();
+      }
+      if (iGroup >= 0 && c[iGroup] && c[iGroup].trim() && c[iGroup].trim().toLowerCase() !== 'n/a') {
+        row.group = c[iGroup].trim();
+      }
+      if (iHemi >= 0 && c[iHemi] && c[iHemi].trim() && c[iHemi].trim().toLowerCase() !== 'n/a') {
+        row.hemisphere = c[iHemi].trim();
+      }
+      rows.push(row);
     }
     if (rows.length < 4) throw new Error('Need at least 4 electrodes with finite x,y,z');
     return rows;
@@ -51,7 +67,13 @@
   // ---- coordsystem.json ---------------------------------------
   api.parseCoordsystem = function (jsonOrText) {
     const obj = typeof jsonOrText === 'string' ? JSON.parse(jsonOrText) : jsonOrText;
-    const prefix = ['EEG', 'iEEG', 'MEG'].find(p => obj[p + 'CoordinateSystem']) || 'EEG';
+    // BIDS prefixes coordinate keys by datatype: EEGCoordinateSystem,
+    // iEEGCoordinateSystem, MEGCoordinateSystem, EMGCoordinateSystem (BEP-030),
+    // NIRSCoordinateSystem. Pick whichever prefix has a match.
+    const prefixes = ['EEG', 'iEEG', 'MEG', 'EMG', 'NIRS'];
+    const prefix = prefixes.find(
+      p => obj[p + 'CoordinateSystem'] || obj[p + 'CoordinateUnits']
+    ) || 'EEG';
     return {
       space: obj[prefix + 'CoordinateSystem'] || 'Other',
       units: (obj[prefix + 'CoordinateUnits'] || 'm').toLowerCase(),
@@ -236,22 +258,160 @@
     return matches / electrodes.length >= 0.7 ? 'label' : 'position';
   }
 
+  // Modalities the EEG-style sphere pipeline applies to. Other modalities
+  // (iEEG in brain space, EMG on body landmarks, fNIRS when the coordsystem
+  // isn't obviously a scalp frame) bypass sphere-fit + unit-inference and
+  // go through a "flat" pipeline that just normalises the bounding box.
+  const SPHERE_MODALITIES = new Set(['eeg', 'meg']);
+
+  // ---- Flat pipeline (iEEG / EMG / fNIRS / anything non-spherical) ----
+  // Normalises raw (x, y, z) to a [-1, 1] cube around the centroid. Skips
+  // axis rotation, unit inference, and sphere-fit. The viewer renders these
+  // as a plain scatter — no head outline, no 10-10 rings, just coordinate
+  // axes and a bounding box.
+  //
+  // For EMG datasets with multiple anatomical frames in one file (HySER's
+  // ed/ep/fd/fp), we spread the groups across a 2×2 grid so they don't
+  // stack at the same normalised coords. Detection: the raw parser
+  // preserves the `coordinate_system` column when present.
+  function buildFlatMontage({ raw, meta, label, modality }) {
+    const electrodes = raw.slice();
+
+    // Group-based offsets for EMG multi-frame files. Each group gets its
+    // own sub-panel in a grid. Groups are laid out 2-across.
+    const groupKey = (e) => e.coordinate_system || e.group || '';
+    const groups = [...new Set(electrodes.map(groupKey).filter(k => k !== ''))];
+    const hasGroups = groups.length > 1;
+    const perGroupPanel = {};  // groupName -> {ox, oy} offset in normalised space
+    if (hasGroups) {
+      const cols = Math.ceil(Math.sqrt(groups.length));
+      groups.forEach((g, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        // Each sub-panel fits in roughly [-0.45, 0.45]; offset centres
+        // them on a (cols × rows) grid centered on (0, 0).
+        const span = 1 / cols;
+        const ox = (col - (cols - 1) / 2) * span * 2;
+        const oy = ((cols - 1) / 2 - row) * span * 2;   // row 0 on top
+        perGroupPanel[g] = { ox, oy, span };
+      });
+    }
+
+    // Normalise each group (or the whole cloud) to [-0.45, 0.45].
+    const normalise = (pts) => {
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y), zs = pts.map(p => p.z);
+      const xmin = Math.min(...xs), xmax = Math.max(...xs);
+      const ymin = Math.min(...ys), ymax = Math.max(...ys);
+      const zmin = Math.min(...zs), zmax = Math.max(...zs);
+      const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2, cz = (zmin + zmax) / 2;
+      const span = Math.max(xmax - xmin, ymax - ymin, 1e-9);
+      return { cx, cy, cz, span };
+    };
+
+    const out = [];
+    if (hasGroups) {
+      for (const g of groups) {
+        const members = electrodes.filter(e => groupKey(e) === g);
+        const { cx, cy, cz, span } = normalise(members);
+        const { ox, oy, span: panelSpan } = perGroupPanel[g];
+        const scale = panelSpan * 0.9;   // leave 10% margin per panel
+        for (const e of members) {
+          const nx = (e.x - cx) / span * scale + ox;
+          const ny = (e.y - cy) / span * scale + oy;
+          // In flat mode ux/uy are the final 2D coords; uz stays raw for
+          // completeness but the renderer uses only ux/uy.
+          out.push({
+            name: e.name,
+            x: +(e.x).toFixed(5), y: +(e.y).toFixed(5), z: +(e.z).toFixed(5),
+            ux: nx, uy: ny, uz: 0,
+            region: 'other',
+            type: e.type || modality.toUpperCase(),
+            material: e.material || '',
+            group: e.group, coordinate_system: e.coordinate_system,
+          });
+        }
+      }
+    } else {
+      const { cx, cy, cz, span } = normalise(electrodes);
+      for (const e of electrodes) {
+        out.push({
+          name: e.name,
+          x: +(e.x).toFixed(5), y: +(e.y).toFixed(5), z: +(e.z).toFixed(5),
+          ux: (e.x - cx) / span * 0.9,
+          uy: (e.y - cy) / span * 0.9,
+          uz: (e.z - cz) / span * 0.9,
+          region: 'other',
+          type: e.type || modality.toUpperCase(),
+          material: e.material || '',
+        });
+      }
+    }
+
+    return {
+      label: label || `Loaded · ${out.length}ch`,
+      count: out.length,
+      electrodes: out,
+      space: meta.space,
+      units: meta.units,
+      // Flat layouts have no sphere geometry. Consumers that read `.sphere`
+      // must handle null explicitly (rail stats, caption, etc.).
+      sphere: null,
+      inferredUnits: meta.units,
+      declaredUnits: meta.units,
+      unitsMismatch: false,
+      axisTransform: null,
+      regionStrategy: 'none',
+      layoutStyle: 'flat',
+      modality,
+      groups: hasGroups ? groups : null,
+    };
+  }
+
+  // Best-effort modality inference when the caller doesn't supply it.
+  // Inspects the coordsystem.json keys — BIDS prefixes the system/units
+  // keys with the datatype (EEGCoordinateSystem, iEEGCoordinateSystem, etc.).
+  function inferModalityFromMeta(meta, coordsystemJson) {
+    if (coordsystemJson) {
+      const obj = typeof coordsystemJson === 'string'
+        ? (() => { try { return JSON.parse(coordsystemJson); } catch { return {}; } })()
+        : coordsystemJson;
+      for (const prefix of ['iEEG', 'EEG', 'MEG', 'EMG', 'NIRS']) {
+        if (obj[prefix + 'CoordinateSystem'] || obj[prefix + 'CoordinateUnits']) {
+          return prefix.toLowerCase();
+        }
+      }
+    }
+    return null;
+  }
+
   // ---- Main entry ---------------------------------------------
-  // Returns { label, count, electrodes, space, units, sphere }
-  // matching the shape of MONTAGES[key].
-  api.buildMontageFromBIDS = function ({ tsvText, coordsystemJson, label }) {
+  // Returns { label, count, electrodes, space, units, sphere, layoutStyle,
+  // modality } matching the shape of MONTAGES[key]. The `modality` field
+  // drives the viewer's rendering path ('sphere' vs 'flat').
+  api.buildMontageFromBIDS = function ({ tsvText, coordsystemJson, label, modality }) {
     const parsed = api.parseElectrodesTSV(tsvText);
     const meta = coordsystemJson
       ? api.parseCoordsystem(coordsystemJson)
       : { space: 'Other', units: null, landmarks: null };
 
-    // Step 0: axis convention. Rotate into RAS+ if the declared space uses
-    // ALS (EEGLAB/CTF/4D/KIT). The transform is a pure permutation + sign
-    // flip, so it's safe to apply before sphere fitting.
+    // Resolve modality: explicit > inferred from coordsystem.json keys > "eeg".
+    const resolved = (
+      (modality || '').toLowerCase() ||
+      inferModalityFromMeta(meta, coordsystemJson) ||
+      'eeg'
+    );
+
+    // Flat pipeline for non-spherical modalities. No sphere-fit, no unit
+    // inference, no axis rotation. The viewer renders a simple scatter.
+    if (!SPHERE_MODALITIES.has(resolved)) {
+      return buildFlatMontage({ raw: parsed, meta, label, modality: resolved });
+    }
+
+    // Rotate into RAS+ if the declared space uses ALS (EEGLAB/CTF/4D/KIT).
+    // Pure permutation + sign flip, safe to apply before sphere fitting.
     const axisXform = axisTransformForSpace(meta.space);
     const raw = axisXform ? parsed.map(axisXform.apply) : parsed;
 
-    // Step 1: fit a sphere in whatever units the TSV actually uses.
     const rawSphere = api.fitSphere(raw);
     if (!rawSphere) {
       throw new Error(
@@ -260,10 +420,8 @@
       );
     }
 
-    // Step 2: infer the scale from the fitted radius, not the metadata.
-    // The data is the ground truth; coordsystem.json frequently lies about
-    // units. If the raw radius is a plausible head radius in m/mm/cm we pick
-    // the matching scale; otherwise we bail with a clear error.
+    // Infer scale from the fitted radius, not the metadata. coordsystem.json
+    // frequently lies about units (see ds002578 mm-vs-m).
     const inferred = inferMetersScaleFromRadius(rawSphere[3]);
     if (!inferred) {
       throw new Error(
@@ -273,13 +431,10 @@
       );
     }
 
-    // Step 3: apply the inferred scale. Everything below is meters.
     const s = inferred.scale;
     const scaled = raw.map(e => ({ ...e, x: e.x * s, y: e.y * s, z: e.z * s }));
     const [cx, cy, cz, R] = rawSphere.map(v => v * s);
 
-    // Flag a disagreement between declared and inferred units — useful for the
-    // UI and for diagnosing datasets with bad coordsystem.json files.
     const declaredUnits = meta.units || null;
     const unitsMismatch = declaredUnits && declaredUnits !== inferred.unit;
 
@@ -316,6 +471,8 @@
       unitsMismatch,
       axisTransform: axisXform ? axisXform.name : null,
       regionStrategy,
+      layoutStyle: 'sphere',
+      modality: resolved,
     };
   };
 
