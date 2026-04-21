@@ -384,33 +384,28 @@
     return null;
   }
 
-  // ---- Main entry ---------------------------------------------
-  // Returns { label, count, electrodes, space, units, sphere, layoutStyle,
-  // modality } matching the shape of MONTAGES[key]. The `modality` field
-  // drives the viewer's rendering path ('sphere' vs 'flat').
-  api.buildMontageFromBIDS = function ({ tsvText, coordsystemJson, label, modality }) {
-    const parsed = api.parseElectrodesTSV(tsvText);
-    const meta = coordsystemJson
-      ? api.parseCoordsystem(coordsystemJson)
-      : { space: 'Other', units: null, landmarks: null };
-
-    // Resolve modality: explicit > inferred from coordsystem.json keys > "eeg".
+  // ---- Core sensor → montage pipeline -------------------------
+  // Used by both the TSV path (parse first) and the registry path (sensors
+  // already parsed server-side). Input is an array of ``{name, x, y, z,
+  // type?, material?}`` rows plus a ``meta = {space, units}`` object and
+  // the caller's chosen modality (explicit or resolved).
+  api.buildMontageFromSensors = function ({ sensors, meta, label, modality }) {
     const resolved = (
       (modality || '').toLowerCase() ||
-      inferModalityFromMeta(meta, coordsystemJson) ||
+      inferModalityFromMeta(meta, null) ||
       'eeg'
     );
 
     // Flat pipeline for non-spherical modalities. No sphere-fit, no unit
     // inference, no axis rotation. The viewer renders a simple scatter.
     if (!SPHERE_MODALITIES.has(resolved)) {
-      return buildFlatMontage({ raw: parsed, meta, label, modality: resolved });
+      return buildFlatMontage({ raw: sensors, meta, label, modality: resolved });
     }
 
     // Rotate into RAS+ if the declared space uses ALS (EEGLAB/CTF/4D/KIT).
     // Pure permutation + sign flip, safe to apply before sphere fitting.
     const axisXform = axisTransformForSpace(meta.space);
-    const raw = axisXform ? parsed.map(axisXform.apply) : parsed;
+    const raw = axisXform ? sensors.map(axisXform.apply) : sensors;
 
     const rawSphere = api.fitSphere(raw);
     if (!rawSphere) {
@@ -474,6 +469,69 @@
       layoutStyle: 'sphere',
       modality: resolved,
     };
+  };
+
+  // ---- Main entry (TSV + coordsystem pipeline) ----------------
+  // Returns { label, count, electrodes, space, units, sphere, layoutStyle,
+  // modality } matching the shape of MONTAGES[key]. The `modality` field
+  // drives the viewer's rendering path ('sphere' vs 'flat').
+  api.buildMontageFromBIDS = function ({ tsvText, coordsystemJson, label, modality }) {
+    const parsed = api.parseElectrodesTSV(tsvText);
+    const meta = coordsystemJson
+      ? api.parseCoordsystem(coordsystemJson)
+      : { space: 'Other', units: null, landmarks: null };
+
+    // Let inferModalityFromMeta see the raw coordsystem.json keys — they
+    // carry the only modality hint outside of the URL.
+    const resolved = (
+      (modality || '').toLowerCase() ||
+      inferModalityFromMeta(meta, coordsystemJson) ||
+      'eeg'
+    );
+
+    return api.buildMontageFromSensors({
+      sensors: parsed,
+      meta,
+      label,
+      modality: resolved,
+    });
+  };
+
+  // ---- Registry pipeline (GET /api/{db}/montages/{hash}) -------
+  // The API returns ``{database, data: <montage doc>}``; pass either the
+  // wrapper or the inner doc here. Registry docs ship sensors already
+  // parsed plus declared space/units, so we bypass TSV parsing entirely.
+  api.buildMontageFromRegistryDoc = function (docOrResponse, { label } = {}) {
+    const doc = (docOrResponse && docOrResponse.data) ? docOrResponse.data : docOrResponse;
+    if (!doc || !Array.isArray(doc.sensors) || doc.sensors.length < 4) {
+      throw new Error('registry doc missing sensors array (need at least 4)');
+    }
+    // Normalize sensor rows. The digest pipeline writes `{name, x, y, z}`
+    // plus optional `type`/`material`; coerce to numbers defensively.
+    const sensors = doc.sensors
+      .map(s => ({
+        name: String(s.name || '').trim(),
+        x: +s.x, y: +s.y, z: +s.z,
+        type: s.type || '',
+        material: s.material || '',
+      }))
+      .filter(s => s.name && isFinite(s.x) && isFinite(s.y) && isFinite(s.z));
+    if (sensors.length < 4) {
+      throw new Error('registry doc has fewer than 4 electrodes with finite coordinates');
+    }
+    const meta = {
+      space: doc.space_declared || 'Other',
+      units: (doc.units_declared || '').toLowerCase() || null,
+      landmarks: null,
+    };
+    const hashTag = doc.hash ? ` · ${String(doc.hash).slice(0, 8)}` : '';
+    const fallbackLabel = `Registry${hashTag} · ${sensors.length}ch`;
+    return api.buildMontageFromSensors({
+      sensors,
+      meta,
+      label: label || fallbackLabel,
+      modality: doc.modality,
+    });
   };
 
   window.BIDSLoader = api;

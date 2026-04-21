@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
 <link rel="stylesheet" href="styles.css?v=4" />
 <script src="montages.js?v=6"></script>
-<script src="bids-loader.js?v=2"></script>
+<script src="bids-loader.js?v=3"></script>
 <script src="topo2d.js?v=6"></script>
 </head>
 <body>
@@ -731,10 +731,12 @@ setMontage(state.montage);
 
    Three URL shapes, in priority order:
 
-     ?montage=<registry_id>
-         Fetches data.eegdash.org/api/eegdash/montages/<id>, resolves the
-         TSV and coordsystem URLs from the manifest, then loads. Primary
-         shape used by the iframe inside eegdash docs pages.
+     ?montage=<hash>   (optional ?api=<base>&db=<name> overrides)
+         GET <base>/api/<db>/montages/<hash> → registry doc with the
+         sensor coordinates already parsed server-side. Skips the TSV
+         round-trip. Primary shape used by the iframe inside eegdash
+         docs pages. ``?api=`` / ``?db=`` exist for pointing at a dev
+         registry without rebuilding the viewer.
 
      ?tsv=<url>&coords=<url>
          Direct fetch of two files. ?coords= is optional. Useful for
@@ -765,6 +767,7 @@ const AUTOLOAD_MAX_LABEL_LEN    = 28;
   const qCoords  = params.get('coords');
   const qDemo    = params.get('demo');
   const qApi     = params.get('api');
+  const qDb      = params.get('db');
 
   if (!qMontage && !qTsv && !qDemo) return;
 
@@ -773,7 +776,25 @@ const AUTOLOAD_MAX_LABEL_LEN    = 28;
     return;
   }
 
-  const sources = await resolveAutoloadSources({ qMontage, qTsv, qCoords, qDemo, qApi })
+  // Registry path: montage doc already carries sensor coordinates, so we
+  // skip the TSV round-trip and hand the doc straight to the sensor
+  // pipeline. This is the shape the eegdash docs iframe uses.
+  if (qMontage) {
+    try {
+      const montage = await loadMontageFromRegistry({ hash: qMontage, apiBase: qApi, database: qDb });
+      MONTAGES[LOADED_KEY] = montage;
+      upsertLoadedMontageButton(montage);
+      setMontage(LOADED_KEY);
+    } catch (err) {
+      console.error('[auto-load] registry fetch failed:', { hash: qMontage, err });
+      showLoadError(`Could not load montage: ${err.message}`);
+    }
+    return;
+  }
+
+  // Raw-file paths (?tsv= / ?demo=): fetch the TSV + optional coordsystem
+  // and feed them through the existing drag-drop pipeline.
+  const sources = await resolveAutoloadSources({ qTsv, qCoords, qDemo })
     .catch(err => { showLoadError(err.message); return null; });
   if (!sources) return;
 
@@ -786,19 +807,29 @@ const AUTOLOAD_MAX_LABEL_LEN    = 28;
   }
 })();
 
-/* Resolve query params to concrete URLs and a display label.
-   Returns { tsvUrl, coordsUrl | null, label }. */
-async function resolveAutoloadSources({ qMontage, qTsv, qCoords, qDemo, qApi }) {
-  if (qMontage) {
-    // Registry lookup. Base URL can be overridden with ?api=… for testing.
-    const apiBase = (qApi || 'https://data.eegdash.org').replace(/\/$/, '');
-    const regUrl = `${apiBase}/api/eegdash/montages/${encodeURIComponent(qMontage)}`;
-    const r = await fetchWithTimeout(regUrl);
-    if (!r.ok) throw new Error(`registry ${regUrl} → ${r.status}`);
-    const doc = await r.json();
-    if (!doc.tsv_url) throw new Error('registry doc missing tsv_url');
-    return { tsvUrl: doc.tsv_url, coordsUrl: doc.coords_url || null, label: doc.label || doc.id || qMontage };
+/* Fetch a registry montage doc and build an in-viewer montage. Rejects
+   with a user-readable Error on 404/timeout/malformed response. */
+async function loadMontageFromRegistry({ hash, apiBase, database }) {
+  const base = (apiBase || 'https://data.eegdash.org').replace(/\/+$/, '');
+  const db = (database || 'eegdash').replace(/[^a-z0-9_]/gi, '');
+  const regUrl = `${base}/api/${db}/montages/${encodeURIComponent(hash)}`;
+  const r = await fetchWithTimeout(regUrl);
+  if (r.status === 404) {
+    throw new Error(`no registry entry for montage ${hash}`);
   }
+  if (!r.ok) {
+    throw new Error(`registry ${regUrl} → ${r.status}`);
+  }
+  const body = await r.json().catch(() => null);
+  if (!body) throw new Error('registry returned non-JSON response');
+  return BIDSLoader.buildMontageFromRegistryDoc(body, {
+    label: `Registry · ${String(hash).slice(0, 8)}`,
+  });
+}
+
+/* Resolve direct-URL query params (?tsv/?demo) to concrete URLs.
+   Returns { tsvUrl, coordsUrl | null, label }. */
+async function resolveAutoloadSources({ qTsv, qCoords, qDemo }) {
   if (qTsv) {
     // Trust the caller. Accept any scheme so tests can point at localhost.
     return { tsvUrl: qTsv, coordsUrl: qCoords || null, label: extractLabelFromUrl(qTsv) };
