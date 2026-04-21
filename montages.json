@@ -1,14 +1,4 @@
-// Canonical sensor montages — generated from MNE by
-// scripts/build-canonical-montages.py (MNE 1.12.0).
-// Do NOT edit by hand; regenerate with the Python script.
-//
-// The previous hand-rolled spherical formulas in this file were wrong by
-// up to 76° for Fp1/Fp2 and 43° for T7/T8 (commit 40b0291). MNE owns the
-// positions now; the viewer has no runtime Python dependency.
-
-(function () {
-  window.HEAD_RADIUS_M = 0.09906;
-  window.MONTAGES = {
+{
   "10-20": {
     "label": "Standard 10-20",
     "count": 94,
@@ -16270,6 +16260,10 @@
         "region": "occipital"
       }
     ]
+  },
+  "_meta": {
+    "head_radius_m": 0.09906,
+    "mne_version": "1.12.0",
+    "generated_from": "mne.channels.make_standard_montage"
   }
-};
-})();
+}

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
 <link rel="stylesheet" href="styles.css?v=4" />
-<script src="montages.js?v=4"></script>
+<script src="montages.js?v=5"></script>
 <script src="bids-loader.js?v=2"></script>
 <script src="topo2d.js?v=6"></script>
 </head>
@@ -211,7 +211,12 @@ EEGTopo2D.init(stage2d);
 
 /* Montage list */
 const montageList = document.getElementById('montage-list');
-const MONTAGE_ORDER = ['10-20', '10-10', '10-05', 'biosemi16', 'biosemi32', 'biosemi64', 'biosemi128', 'egi128'];
+const MONTAGE_ORDER = [
+  '10-20', '10-10', '10-05',
+  'biosemi16', 'biosemi32', 'biosemi64', 'biosemi128', 'biosemi256',
+  'egi128', 'egi256',
+  'mgh60', 'easycap-M1',
+];
 function renderMontageButton(btn, label, count) {
   btn.textContent = '';
   const name = document.createElement('span');
