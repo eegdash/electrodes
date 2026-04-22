@@ -692,21 +692,35 @@ body.embed .brand-title { font-size: 11px; }
 body.embed .brand { gap: 8px; }
 
 /* eegdash logo anchor — visible only in embed mode, top-right.
-   Outside embed mode the page already has its own brand chrome. */
+   Outside embed mode the page already has its own brand chrome.
+   Uses the long wordmark (eegdash_long.svg) so the host page gets a
+   proper, readable brand lockup — not just the sphere glyph. */
 .embed-brand {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  height: 30px;
+  padding: 0 6px;
   border-radius: 8px;
   transition: background 120ms ease, transform 120ms ease;
-  /* Nudge visual size down so the 28x28 SVG sits in the header comfortably. */
   text-decoration: none;
 }
-.embed-brand img { display: block; }
+.embed-brand img {
+  display: block;
+  height: 26px;
+  width: auto;
+}
 .embed-brand:hover { background: var(--bg-2); transform: translateY(-1px); }
 body.embed .embed-brand { display: inline-flex; }
+body.embed .header {
+  /* The long wordmark needs vertical breathing room. Nudge the header
+     up from 34px so brand-title on the left + wordmark on the right
+     both sit comfortably without clipping. */
+  min-height: 44px;
+}
+body.embed .app {
+  grid-template-rows: 44px 1fr 0;
+}
 
 /* Compact region legend rendered over the bottom-left of the stage
    in embed mode. Lets readers decode the electrode colors without
