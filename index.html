@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-<link rel="stylesheet" href="styles.css?v=6" />
+<link rel="stylesheet" href="styles.css?v=7" />
 <script src="montages.js?v=6"></script>
-<script src="bids-loader.js?v=4"></script>
-<script src="topo2d.js?v=6"></script>
+<script src="bids-loader.js?v=5"></script>
+<script src="topo2d.js?v=7"></script>
 </head>
 <body>
 
@@ -70,7 +70,7 @@
       <div class="legend" id="legend">
         <div class="legend-item" data-region="frontal"><span class="legend-swatch" style="background: oklch(0.60 0.14 265)"></span>Frontal</div>
         <div class="legend-item" data-region="central"><span class="legend-swatch" style="background: oklch(0.62 0.14 150)"></span>Central</div>
-        <div class="legend-item" data-region="parietal"><span class="legend-swatch" style="background: oklch(0.62 0.15 85)"></span>Parietal</div>
+        <div class="legend-item" data-region="parietal"><span class="legend-swatch" style="background: #E69F00"></span>Parietal</div>
         <div class="legend-item" data-region="occipital"><span class="legend-swatch" style="background: oklch(0.58 0.15 25)"></span>Occipital</div>
         <div class="legend-item" data-region="reference"><span class="legend-swatch" style="background: oklch(0.50 0.02 270)"></span>Reference</div>
         <div class="legend-item" data-region="egi"><span class="legend-swatch" style="background: oklch(0.55 0.15 300)"></span>EGI</div>
@@ -481,7 +481,7 @@ function setMontage(key) {
 const EMBED_LEGEND_ROWS = {
   frontal:   { label: 'Frontal',   color: 'oklch(0.60 0.14 265)' },
   central:   { label: 'Central',   color: 'oklch(0.62 0.14 150)' },
-  parietal:  { label: 'Parietal',  color: 'oklch(0.62 0.15 85)'  },
+  parietal:  { label: 'Parietal',  color: '#E69F00'  },
   occipital: { label: 'Occipital', color: 'oklch(0.58 0.15 25)'  },
   reference: { label: 'Reference', color: 'oklch(0.50 0.02 270)' },
   egi:       { label: 'EGI grid',  color: 'oklch(0.55 0.15 300)' },
@@ -591,7 +591,7 @@ function regionToColor(r) {
   const map = {
     frontal: 'oklch(0.60 0.14 265)',
     central: 'oklch(0.62 0.14 150)',
-    parietal: 'oklch(0.62 0.15 85)',
+    parietal: '#E69F00',
     occipital: 'oklch(0.58 0.15 25)',
     reference: 'oklch(0.50 0.02 270)',
     egi: 'oklch(0.55 0.15 300)',

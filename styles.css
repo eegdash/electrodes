@@ -14,7 +14,7 @@
   --warn: oklch(0.62 0.16 40);
   --frontal:   oklch(0.60 0.14 265);
   --central:   oklch(0.62 0.14 150);
-  --parietal:  oklch(0.62 0.15 85);
+  --parietal:  #E69F00;
   --occipital: oklch(0.58 0.15 25);
   --reference: oklch(0.50 0.02 270);
   --egi: oklch(0.55 0.15 300);
@@ -688,7 +688,10 @@ body.embed .header {
   align-items: center;
   justify-content: space-between;
 }
-body.embed .brand-title { font-size: 11px; }
+/* The wordmark on the right IS the product brand in embed mode; the
+   "ELECTRODE EXPLORER" label on the left becomes redundant noise. Keep
+   the sphere glyph as a minimal visual anchor. */
+body.embed .brand-title { display: none; }
 body.embed .brand { gap: 8px; }
 
 /* eegdash logo anchor — visible only in embed mode, top-right.
@@ -722,15 +725,16 @@ body.embed .app {
   grid-template-rows: 44px 1fr 0;
 }
 
-/* Compact region legend rendered over the bottom-left of the stage
-   in embed mode. Lets readers decode the electrode colors without
-   needing the Regions rail. */
+/* Compact region legend pinned to the top-right of the stage in embed
+   mode. Lets readers decode the electrode colors without the Regions
+   rail, and avoids colliding with the INION label at the bottom of
+   dense 256-ch caps. */
 .embed-legend {
   display: none;
   position: absolute;
-  bottom: 10px;
-  left: 12px;
+  top: 12px;
   right: 12px;
+  max-width: calc(100% - 24px);
   flex-wrap: wrap;
   gap: 4px 10px;
   padding: 6px 10px;

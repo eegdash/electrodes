@@ -67,7 +67,7 @@
   const REGION_COLORS = {
     frontal:   'oklch(0.60 0.14 265)',
     central:   'oklch(0.62 0.14 150)',
-    parietal:  'oklch(0.62 0.15 85)',
+    parietal:  '#E69F00',
     temporal:  'oklch(0.58 0.12 35)',
     occipital: 'oklch(0.55 0.14 15)',
     reference: 'oklch(0.55 0.02 260)',
@@ -136,7 +136,14 @@
     // 10-10 reference rings — concentric arcs at r = 0.25, 0.5, 0.75
     // (polar angles 22.5°, 45°, 67.5° from the vertex in the azimuthal-
     // equidistant projection). Give the eye orientation for dense montages.
-    [0.25, 0.5, 0.75].forEach(rr => {
+    //
+    // Adaptive density: at 256+ channels the dashed rings fight the dot
+    // cloud, so drop the middle ring and use a slightly higher contrast
+    // opacity on the two that remain.
+    const dense = electrodes.length > 200;
+    const ringRadii = dense ? [0.33, 0.66] : [0.25, 0.5, 0.75];
+    const ringOpacity = dense ? 0.35 : 0.45;
+    ringRadii.forEach(rr => {
       const ring = document.createElementNS(NS, 'circle');
       ring.setAttribute('cx', 0);
       ring.setAttribute('cy', 0);
@@ -145,7 +152,7 @@
       ring.setAttribute('stroke', 'var(--ink-3, #b5b8bd)');
       ring.setAttribute('stroke-width', 0.003);
       ring.setAttribute('stroke-dasharray', '0.012 0.018');
-      ring.setAttribute('opacity', 0.45);
+      ring.setAttribute('opacity', ringOpacity);
       gOutline.appendChild(ring);
     });
 
@@ -433,9 +440,12 @@
         let show = true;
         if (opts.labelDensity === 'none') show = false;
         else if (opts.labelDensity === 'smart') {
-          // In smart mode, show labels for all electrodes when ≤32 total,
-          // else only show selected / hovered / search-matched.
-          if (electrodes.length > 32) {
+          // Sphere layouts: labels readable up to ≈32 sensors; beyond that
+          // switch to on-demand (selected / hovered / search-matched).
+          // Flat layouts (fNIRS / EMG / iEEG-brain): physically close
+          // source/detector pairs collide even at 20 sensors, so default
+          // to on-demand here too — labels still appear on hover.
+          if (layoutStyle === 'flat' || electrodes.length > 32) {
             show = sel || isHover || (isFiltered && filtered.has(el.name));
           }
         }

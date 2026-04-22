@@ -101,16 +101,65 @@
   // Note: ds002578 declares "CTF" but the maintainer has publicly acknowledged
   // the label is wrong and the data is really in EEGLAB convention
   // (same ALS axes, so the rotation applies either way).
+  const ALS_TO_RAS = {
+    name: 'ALS→RAS+',
+    apply: (e) => ({ ...e, x: -e.y, y: e.x, z: e.z }),
+  };
+
   function axisTransformForSpace(space) {
     if (!space) return null;
     const s = space.toUpperCase();
     if (s === 'EEGLAB' || s === 'CTF' || s === '4D' || s === 'KIT') {
-      return {
-        name: 'ALS→RAS+',
-        apply: (e) => ({ ...e, x: -e.y, y: e.x, z: e.z }),
-      };
+      return ALS_TO_RAS;
     }
     return null;                    // identity for RAS+ frames and unknown
+  }
+
+  /* Detect ALS-stored data when the coordsystem declares "Other" or is
+     missing entirely. Some public datasets (e.g. ds001971) store x=anterior
+     / y=left but declare the frame as "Other", so the above lookup returns
+     null and electrodes render rotated 90° (frontal labels land on the
+     right side of the head in the topomap).
+
+     Two heuristics, both using the sensor cloud itself:
+
+     1. If a standard 10-20 frontal label is present (Fp1/Fp2/Fpz/Nz),
+        it should sit at high +Y in RAS+. If instead its |x| > |y| AND
+        x > 0 for Fp* / Nz, the cloud is ALS.
+     2. Fallback when no named landmarks are present: if Fpz/Cz aren't
+        found, return null (we can't guess). RAS+ is the safer default.
+
+     Returns the ALS→RAS+ transform when detection is confident, else null. */
+  function inferAxisTransformFromSensors(sensors) {
+    if (!Array.isArray(sensors) || sensors.length < 4) return null;
+    const byName = {};
+    for (const s of sensors) {
+      const k = (s.name || '').toUpperCase();
+      if (k) byName[k] = s;
+    }
+    // Probe candidates, front-most 10-20 labels first.
+    const frontCandidates = ['FPZ', 'NZ', 'FP1', 'FP2', 'AFZ', 'AFP1', 'AFP2'];
+    const backCandidates  = ['OZ', 'IZ', 'O1', 'O2', 'POO1', 'POO2'];
+    const pickFirst = (keys) => {
+      for (const k of keys) if (byName[k]) return byName[k];
+      return null;
+    };
+    const front = pickFirst(frontCandidates);
+    const back  = pickFirst(backCandidates);
+    if (!front) return null;
+    // Anterior marker should dominate on the anterior axis. In RAS+ that's
+    // +Y; in ALS it's +X. Pick whichever axis has the larger magnitude,
+    // signed toward anterior (toward the nose).
+    const ax = Math.abs(front.x);
+    const ay = Math.abs(front.y);
+    // If we also have an occipital anchor, check it points opposite along
+    // the same axis — removes false positives from single-sensor flukes.
+    if (ay > 1.3 * ax && front.y > 0) return null;         // already RAS+
+    if (ax > 1.3 * ay && front.x > 0) {
+      if (back && back.x > 0) return null;                 // front + back both at +X: not ALS
+      return ALS_TO_RAS;
+    }
+    return null;
   }
 
   // Infer the scale that turns a raw sphere radius into meters, based on what
@@ -399,7 +448,17 @@
     // Rotate into RAS+ if the declared space uses ALS (EEGLAB/CTF/4D/KIT).
     // Applied to both sphere- and flat-mode inputs; pure permutation +
     // sign flip, safe before any downstream fitting / normalisation.
-    const axisXform = axisTransformForSpace(meta.space);
+    //
+    // Fallback: when the declared space is unknown ("Other" / null) we
+    // sniff the sensor cloud itself via known 10-20 anchors (Fpz/Nz/Fp1
+    // at high +X instead of high +Y → ALS-stored). Covers datasets like
+    // ds001971 where the authors uploaded ALS coords with a generic
+    // space label. Guarded to only kick in when axisTransformForSpace
+    // returned null — explicit declarations always win.
+    let axisXform = axisTransformForSpace(meta.space);
+    if (!axisXform) {
+      axisXform = inferAxisTransformFromSensors(sensors);
+    }
     const raw = axisXform ? sensors.map(axisXform.apply) : sensors;
 
     // Flat pipeline for non-spherical modalities. No sphere-fit, no unit
