@@ -651,9 +651,18 @@ body.drag-active::after {
 /* =========================================================
    Embed mode (?embed=1) — iframe layout. Hides navigational
    chrome so the host page owns that context. Only the
-   topomap + caption are visible by default. ?tweaks=1 makes
-   the tweaks panel visible on top.
+   topomap + caption + region legend are visible by default.
+   ?tweaks=1 makes the tweaks panel visible on top.
+
+   Palette is tuned to blend with host docs pages (eegdash.org
+   uses a white body); we drop the viewer's cream background
+   so the iframe reads as part of the parent page.
    ========================================================= */
+body.embed {
+  /* Host pages (pydata-sphinx-theme) sit on #ffffff. Transparent
+     background lets the iframe inherit whatever the parent uses. */
+  background: transparent;
+}
 body.embed .rail,
 body.embed .tsv-panel,
 body.embed .header-right,
@@ -664,12 +673,78 @@ body.embed #stage-hint {
 body.embed .app {
   grid-template-columns: 0 1fr 0;
   grid-template-rows: 34px 1fr 0;
+  background: transparent;
+}
+body.embed .stage,
+body.embed .stage-pane,
+body.embed .header {
+  background: transparent;
 }
 body.embed .header {
   padding: 0 12px;
   min-height: 34px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 body.embed .brand-title { font-size: 11px; }
+body.embed .brand { gap: 8px; }
+
+/* eegdash logo anchor — visible only in embed mode, top-right.
+   Outside embed mode the page already has its own brand chrome. */
+.embed-brand {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  transition: background 120ms ease, transform 120ms ease;
+  /* Nudge visual size down so the 28x28 SVG sits in the header comfortably. */
+  text-decoration: none;
+}
+.embed-brand img { display: block; }
+.embed-brand:hover { background: var(--bg-2); transform: translateY(-1px); }
+body.embed .embed-brand { display: inline-flex; }
+
+/* Compact region legend rendered over the bottom-left of the stage
+   in embed mode. Lets readers decode the electrode colors without
+   needing the Regions rail. */
+.embed-legend {
+  display: none;
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  right: 12px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  backdrop-filter: blur(4px);
+  pointer-events: none;     /* don't intercept topomap clicks */
+  z-index: 2;
+}
+.embed-legend .embed-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+}
+.embed-legend .embed-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+body.embed .embed-legend { display: flex; }
+body.embed .stage { position: relative; }
 
 /* Error banner used in embed mode — when the rails are hidden
    the status line isn't visible, so errors need their own

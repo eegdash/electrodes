@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
-<link rel="stylesheet" href="styles.css?v=4" />
+<link rel="stylesheet" href="styles.css?v=5" />
 <script src="montages.js?v=6"></script>
 <script src="bids-loader.js?v=4"></script>
 <script src="topo2d.js?v=6"></script>
@@ -33,6 +33,14 @@
       <span class="pill" id="pill-selected">0 selected</span>
       <span class="pill" id="pill-coord">RAS+ · meters</span>
     </div>
+    <!-- Embed-only: eegdash brand anchor, hidden outside embed mode. -->
+    <a class="embed-brand" id="embed-brand"
+       href="https://eegdash.org"
+       target="_blank" rel="noopener"
+       aria-label="Open eegdash.org in a new tab"
+       title="eegdash — open in new tab">
+      <img src="eegdash-logo.svg" alt="eegdash" width="28" height="28" />
+    </a>
   </header>
 
   <!-- LEFT RAIL -->
@@ -80,6 +88,12 @@
     <div class="stage-pane" id="stage-2d" data-screen-label="2d-top">
       <div class="stage-caption" id="stage-caption" aria-hidden="true"></div>
     </div>
+
+    <!-- Embed-only legend: compact region key so colors read as meaningful
+         inline. Hidden in non-embed mode because the left-rail Regions panel
+         already serves the same purpose. Populated dynamically when the
+         loaded montage changes (empty layouts → legend hides). -->
+    <div class="embed-legend" id="embed-legend" aria-label="Region legend"></div>
     <div class="tooltip" id="tooltip">
       <div class="tt-name">—</div>
       <div class="tt-coords">—</div>
@@ -455,6 +469,55 @@ function setMontage(key) {
   applyFilter();
   updateStats();
   updateStageCaption();
+  renderEmbedLegend(MONTAGES[key]);
+}
+
+/* Compact, embed-only legend. Rendered under the topomap so colors
+   read as meaningful to readers who never see the Regions rail. We only
+   show regions that actually appear in the loaded montage — a pure
+   BioSemi 256 cap labeled A1..H24 maps entirely to position-based
+   buckets, whereas a 10-20 cap lights up frontal/central/parietal/occipital.
+   For fNIRS montages we show the source/detector palette instead. */
+const EMBED_LEGEND_ROWS = {
+  frontal:   { label: 'Frontal',   color: 'oklch(0.60 0.14 265)' },
+  central:   { label: 'Central',   color: 'oklch(0.62 0.14 150)' },
+  parietal:  { label: 'Parietal',  color: 'oklch(0.62 0.15 85)'  },
+  occipital: { label: 'Occipital', color: 'oklch(0.58 0.15 25)'  },
+  reference: { label: 'Reference', color: 'oklch(0.50 0.02 270)' },
+  egi:       { label: 'EGI grid',  color: 'oklch(0.55 0.15 300)' },
+  other:     { label: 'Other',     color: 'oklch(0.55 0.02 260)' },
+};
+function renderEmbedLegend(montage) {
+  const host = document.getElementById('embed-legend');
+  if (!host) return;
+  host.textContent = '';
+  const modality = (montage?.modality || '').toLowerCase();
+  if (modality === 'nirs' || modality === 'fnirs') {
+    // fNIRS uses source/detector coloring, not region. Show that mapping
+    // so warm/cool dots aren't mysterious.
+    host.appendChild(_legendItem('Source',   'oklch(0.62 0.17 40)'));
+    host.appendChild(_legendItem('Detector', 'oklch(0.58 0.14 245)'));
+    return;
+  }
+  const present = new Set();
+  for (const e of (montage?.electrodes || [])) {
+    if (e.region && EMBED_LEGEND_ROWS[e.region]) present.add(e.region);
+  }
+  // Deterministic order: match the rail legend.
+  for (const key of ['frontal', 'central', 'parietal', 'occipital', 'reference', 'egi', 'other']) {
+    if (!present.has(key)) continue;
+    host.appendChild(_legendItem(EMBED_LEGEND_ROWS[key].label, EMBED_LEGEND_ROWS[key].color));
+  }
+}
+function _legendItem(label, color) {
+  const item = document.createElement('span');
+  item.className = 'embed-legend-item';
+  const swatch = document.createElement('span');
+  swatch.className = 'embed-legend-swatch';
+  swatch.style.background = color;
+  item.appendChild(swatch);
+  item.appendChild(document.createTextNode(label));
+  return item;
 }
 
 function updateStageCaption() {
