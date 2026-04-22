@@ -274,7 +274,7 @@
   // ed/ep/fd/fp), we spread the groups across a 2×2 grid so they don't
   // stack at the same normalised coords. Detection: the raw parser
   // preserves the `coordinate_system` column when present.
-  function buildFlatMontage({ raw, meta, label, modality }) {
+  function buildFlatMontage({ raw, meta, label, modality, axisXform }) {
     const electrodes = raw.slice();
 
     // Group-based offsets for EMG multi-frame files. Each group gets its
@@ -359,7 +359,7 @@
       inferredUnits: meta.units,
       declaredUnits: meta.units,
       unitsMismatch: false,
-      axisTransform: null,
+      axisTransform: axisXform ? axisXform.name : null,
       regionStrategy: 'none',
       layoutStyle: 'flat',
       modality,
@@ -396,16 +396,18 @@
       'eeg'
     );
 
-    // Flat pipeline for non-spherical modalities. No sphere-fit, no unit
-    // inference, no axis rotation. The viewer renders a simple scatter.
-    if (!SPHERE_MODALITIES.has(resolved)) {
-      return buildFlatMontage({ raw: sensors, meta, label, modality: resolved });
-    }
-
     // Rotate into RAS+ if the declared space uses ALS (EEGLAB/CTF/4D/KIT).
-    // Pure permutation + sign flip, safe to apply before sphere fitting.
+    // Applied to both sphere- and flat-mode inputs; pure permutation +
+    // sign flip, safe before any downstream fitting / normalisation.
     const axisXform = axisTransformForSpace(meta.space);
     const raw = axisXform ? sensors.map(axisXform.apply) : sensors;
+
+    // Flat pipeline for non-spherical modalities. No sphere-fit, no unit
+    // inference — but still rotation-aware via the `axisXform` we just
+    // applied.
+    if (!SPHERE_MODALITIES.has(resolved)) {
+      return buildFlatMontage({ raw, meta, label, modality: resolved, axisXform });
+    }
 
     const rawSphere = api.fitSphere(raw);
     if (!rawSphere) {
