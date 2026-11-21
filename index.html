@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<!-- GitHub Pages cannot send headers. script-src stays open for the inline
+     app script; electrode names are rendered as text, never HTML. -->
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>EEG Electrode Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -566,9 +570,19 @@ function applyFilter() {
   EEGTopo2D.setFiltered(names);
 }
 
+/* Electrode names come from user- or URL-supplied TSVs (?tsv=), so they are
+   untrusted: always set them as text, never as HTML. */
+function makeEl(tag, { className, text, style } = {}) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = String(text);
+  if (style) Object.assign(node.style, style);
+  return node;
+}
+
 function renderChList() {
   const list = document.getElementById('ch-list');
-  list.innerHTML = '';
+  list.replaceChildren();
   const q = state.search;
   currentElectrodes().forEach(e => {
     const chip = document.createElement('div');
@@ -577,7 +591,7 @@ function renderChList() {
     if (hit) chip.classList.add('hit');
     if (q && !hit) chip.classList.add('dimmed');
     if (state.selected.has(e.name)) chip.classList.add('selected');
-    chip.innerHTML = `<span class="ch-dot" style="background:${regionToColor(e.region)}"></span>${e.name}`;
+    chip.append(makeEl('span', { className: 'ch-dot', style: { background: regionToColor(e.region) } }), e.name);
     chip.addEventListener('click', () => {
       if (state.selected.has(e.name)) state.selected.delete(e.name);
       else state.selected.add(e.name);
@@ -661,24 +675,32 @@ function renderTSV() {
   const view = document.getElementById('tsv-view');
   // Only render first ~ N rows for perf; table is scrollable
   const MAX = 400;
-  const rows = els.slice(0, MAX).map(e => {
-    const cls = state.selected.has(e.name) ? 'selected' : '';
-    return `<tr data-name="${e.name}" class="${cls}"><td>${e.name}</td><td>${e.x}</td><td>${e.y}</td><td>${e.z}</td><td>EEG</td><td>Ag/AgCl</td></tr>`;
-  }).join('');
-  view.innerHTML = `
-    <table>
-      <thead><tr><th>name</th><th>x</th><th>y</th><th>z</th><th>type</th><th>material</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>${els.length > MAX ? `<div style="color:var(--muted);padding-top:8px">…${els.length - MAX} more rows (downloaded TSV includes all)</div>` : ''}
-  `;
-  view.querySelectorAll('tbody tr').forEach(tr => {
+  const table = makeEl('table');
+  const headRow = makeEl('tr');
+  ['name', 'x', 'y', 'z', 'type', 'material'].forEach(h => headRow.append(makeEl('th', { text: h })));
+  table.append(makeEl('thead'));
+  table.tHead.append(headRow);
+  const tbody = makeEl('tbody');
+  els.slice(0, MAX).forEach(e => {
+    const tr = makeEl('tr', { className: state.selected.has(e.name) ? 'selected' : '' });
+    tr.dataset.name = e.name;
+    [e.name, e.x, e.y, e.z, 'EEG', 'Ag/AgCl'].forEach(v => tr.append(makeEl('td', { text: v })));
     tr.addEventListener('click', () => {
       const n = tr.dataset.name;
       if (state.selected.has(n)) state.selected.delete(n);
       else state.selected.add(n);
       applySelection();
     });
+    tbody.append(tr);
   });
+  table.append(tbody);
+  view.replaceChildren(table);
+  if (els.length > MAX) {
+    view.append(makeEl('div', {
+      text: `…${els.length - MAX} more rows (downloaded TSV includes all)`,
+      style: { color: 'var(--muted)', paddingTop: '8px' },
+    }));
+  }
   document.getElementById('tsv-sub').textContent =
     `${els.length} electrodes · RAS+ meters · units=m · head_radius=${HEAD_RADIUS_M}m`;
 }
