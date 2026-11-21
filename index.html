@@ -2,10 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<!-- GitHub Pages cannot send headers. script-src stays open for the inline
-     app script; electrode names are rendered as text, never HTML. -->
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests" />
-<meta name="referrer" content="strict-origin-when-cross-origin" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>EEG Electrode Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,6 +11,10 @@
 <script src="montages.js?v=6"></script>
 <script src="bids-loader.js?v=5"></script>
 <script src="topo2d.js?v=7"></script>
+<!-- GitHub Pages cannot send headers. Last in <head> so Chromium still
+     preload-scans the scripts above (it stops after a CSP meta). script-src stays open for the inline
+     app script; electrode names are rendered as text, never HTML. -->
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'" />
 </head>
 <body>
 
