@@ -96,7 +96,7 @@
     }
     // fNIRS: source/detector distinction dominates when type is present.
     if (currentModality === 'nirs' || currentModality === 'fnirs') {
-      const t = (el.type || '').toLowerCase();
+      const t = (typeof el.type === 'string' ? el.type : '').toLowerCase();
       if (t.includes('source')) return NIRS_SOURCE_FILL;
       if (t.includes('detector')) return NIRS_DETECTOR_FILL;
     }

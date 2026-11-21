@@ -46,6 +46,8 @@ const COLORS = {
   other: '#8a8a85',
 };
 
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 function renderSvg({ title, subtitle, montage }) {
   const VB = 1.25;
   const parts = [];
@@ -81,12 +83,12 @@ function renderSvg({ title, subtitle, montage }) {
   }).slice(0, 8);
   for (const el of labelled) {
     const p = project(el, montage.layoutStyle);
-    parts.push(`<text x="${p.x.toFixed(4)}" y="${(p.y - 0.03).toFixed(4)}" text-anchor="middle" class="lbl">${el.name}</text>`);
+    parts.push(`<text x="${p.x.toFixed(4)}" y="${(p.y - 0.03).toFixed(4)}" text-anchor="middle" class="lbl">${esc(el.name)}</text>`);
   }
 
   // Caption
-  parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.05}" font-size="0.055" fill="#17181a" font-weight="600">${title}</text>`);
-  parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.005}" font-size="0.04" fill="#8a8a85">${subtitle}</text>`);
+  parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.05}" font-size="0.055" fill="#17181a" font-weight="600">${esc(title)}</text>`);
+  parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.005}" font-size="0.04" fill="#8a8a85">${esc(subtitle)}</text>`);
   parts.push(`</svg>`);
   return parts.join('\n');
 }
