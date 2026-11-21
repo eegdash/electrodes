@@ -35,10 +35,11 @@
     const iGroup = headers.indexOf('group');
     const iHemi = headers.indexOf('hemisphere');
 
+    const clean = (s) => String(s || '').replace(/[\t\r\n]+/g, ' ').trim();
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split('\t');
-      const name = (c[iName] || '').trim();
+      const name = clean(c[iName]);
       const x = parseFloat(c[iX]);
       const y = parseFloat(c[iY]);
       const z = parseFloat(c[iZ]);
@@ -46,8 +47,8 @@
       if (!name || !isFinite(x) || !isFinite(y) || !isFinite(z)) continue;
       const row = {
         name, x, y, z,
-        type: iType >= 0 ? (c[iType] || '').trim() : '',
-        material: iMat >= 0 ? (c[iMat] || '').trim() : '',
+        type: iType >= 0 ? clean(c[iType]) : '',
+        material: iMat >= 0 ? clean(c[iMat]) : '',
       };
       if (iCoordSys >= 0 && c[iCoordSys] && c[iCoordSys].trim() && c[iCoordSys].trim().toLowerCase() !== 'n/a') {
         row.coordinate_system = c[iCoordSys].trim();
@@ -569,12 +570,13 @@
     }
     // Normalize sensor rows. The digest pipeline writes `{name, x, y, z}`
     // plus optional `type`/`material`; coerce to numbers defensively.
+    const cleanStr = (v) => (typeof v === 'string' ? v.replace(/[\t\r\n]+/g, ' ').trim() : '');
     const sensors = doc.sensors
       .map(s => ({
-        name: String(s.name || '').trim(),
+        name: String(s.name || '').replace(/[\t\r\n]+/g, ' ').trim(),
         x: +s.x, y: +s.y, z: +s.z,
-        type: s.type || '',
-        material: s.material || '',
+        type: cleanStr(s.type),
+        material: cleanStr(s.material),
       }))
       .filter(s => s.name && isFinite(s.x) && isFinite(s.y) && isFinite(s.z));
     if (sensors.length < 4) {

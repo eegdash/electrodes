@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Regression & security checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: EEG BIDS loader regression
+        run: node test-data/generate-evidence.mjs
+
+      - name: Flat-layout (iEEG / EMG / fNIRS) regression
+        run: node test-data/generate-flat-evidence.mjs
+
+      - name: CSP, Trusted Types, preload & sanitization checks
+        run: node test-data/test-security.mjs
+
+      - name: Verify evidence SVGs are up to date
+        run: git diff --exit-code -- test-data/*.svg

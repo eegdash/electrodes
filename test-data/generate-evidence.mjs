@@ -93,16 +93,18 @@ parts.push(`<text x="0" y="1.09" text-anchor="middle" dominant-baseline="hanging
 parts.push(`<text x="-1.08" y="0" text-anchor="end" dominant-baseline="middle" class="region">LPA</text>`);
 parts.push(`<text x="1.08" y="0" text-anchor="start" dominant-baseline="middle" class="region">RPA</text>`);
 
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 for (const el of montage.electrodes) {
   const p = project(el);
   const c = REGION_COLORS[el.region] || REGION_COLORS.other;
   parts.push(`<circle cx="${p.x.toFixed(4)}" cy="${p.y.toFixed(4)}" r="0.028" fill="${c}" stroke="#17181a" stroke-opacity="0.45" stroke-width="0.005"/>`);
-  parts.push(`<text x="${p.x.toFixed(4)}" y="${(p.y - 0.04).toFixed(4)}" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">${el.name}</text>`);
+  parts.push(`<text x="${p.x.toFixed(4)}" y="${(p.y - 0.04).toFixed(4)}" text-anchor="middle" dominant-baseline="alphabetic" class="lbl">${esc(el.name)}</text>`);
 }
 
 // Caption
 parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.05}" font-size="0.055" fill="#17181a" font-weight="600">Evidence: BIDSLoader + topo2d projection</text>`);
-parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.005}" font-size="0.04" fill="#8a8a85">${montage.count}ch · ${montage.space} · input mm → fit sphere R=${(montage.sphere.R * 1000).toFixed(1)}mm</text>`);
+parts.push(`<text x="${-VB + 0.05}" y="${VB - 0.005}" font-size="0.04" fill="#8a8a85">${montage.count}ch · ${esc(montage.space)} · input mm → fit sphere R=${(montage.sphere.R * 1000).toFixed(1)}mm</text>`);
 parts.push(`</svg>`);
 
 const outPath = path.join(__dirname, 'evidence.svg');

@@ -3,18 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- GitHub Pages cannot send headers. Kept above all scripts so Trusted Types
+     covers external scripts too; preload links keep parallel fetching in Chromium,
+     where any CSP meta disables the speculative preload scanner. script-src stays
+     open for the inline app script; electrode names are rendered as text, never HTML. -->
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'" />
 <title>EEG Electrode Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
 <link rel="stylesheet" href="styles.css?v=7" />
+<link rel="preload" href="bids-loader.js?v=6" as="script" />
+<link rel="preload" href="topo2d.js?v=8" as="script" />
 <script src="montages.js?v=6"></script>
-<script src="bids-loader.js?v=5"></script>
-<script src="topo2d.js?v=7"></script>
-<!-- GitHub Pages cannot send headers. Last in <head> so Chromium still
-     preload-scans the scripts above (it stops after a CSP meta). script-src stays open for the inline
-     app script; electrode names are rendered as text, never HTML. -->
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'" />
+<script src="bids-loader.js?v=6"></script>
+<script src="topo2d.js?v=8"></script>
 </head>
 <body>
 
@@ -467,8 +470,6 @@ function setMontage(key) {
   document.getElementById('channel-count').textContent = MONTAGES[key].count;
   document.getElementById('stat-total').textContent = MONTAGES[key].count;
   persistTweak('montage', key);
-  renderChList();
-  renderTSV();
   applySelection();
   applyFilter();
   updateStats();
@@ -570,8 +571,10 @@ function applyFilter() {
   EEGTopo2D.setFiltered(names);
 }
 
-/* Electrode names come from user- or URL-supplied TSVs (?tsv=), so they are
-   untrusted: always set them as text, never as HTML. */
+/* Electrode names come from registry docs (?montage=, ingested from uploader
+   BIDS files) as well as ?tsv= URLs and dropped files, so they are untrusted:
+   always set them as text, never as HTML. Clear containers with textContent = ''
+   (Trusted Types blocks innerHTML = '', and replaceChildren() breaks Safari 13.1). */
 function makeEl(tag, { className, text, style } = {}) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -581,8 +584,9 @@ function makeEl(tag, { className, text, style } = {}) {
 }
 
 function renderChList() {
+  if (document.body.classList.contains('embed')) return;
   const list = document.getElementById('ch-list');
-  list.replaceChildren();
+  list.textContent = '';
   const q = state.search;
   currentElectrodes().forEach(e => {
     const chip = document.createElement('div');
@@ -662,47 +666,58 @@ function updateStats() {
 }
 
 /* ========== TSV ========== */
+const TSV_COLUMNS = ['name', 'x', 'y', 'z', 'type', 'material'];
+function tsvRow(e) {
+  return [
+    String(e.name).replace(/[\t\r\n]+/g, ' '),
+    e.x,
+    e.y,
+    e.z,
+    e.type || 'EEG',
+    e.material || (e.material === '' ? 'n/a' : 'Ag/AgCl'),
+  ];
+}
+
 function buildTSV(onlySelected) {
   const els = onlySelected ? currentElectrodes().filter(e => state.selected.has(e.name)) : currentElectrodes();
-  const header = ['name', 'x', 'y', 'z', 'type', 'material'];
-  const rows = [header.join('\t')];
-  els.forEach(e => rows.push([e.name, e.x, e.y, e.z, 'EEG', 'Ag/AgCl'].join('\t')));
+  const rows = [TSV_COLUMNS.join('\t')];
+  els.forEach(e => rows.push(tsvRow(e).join('\t')));
   return rows.join('\n') + '\n';
 }
 
 function renderTSV() {
-  const els = currentElectrodes();
+  if (document.body.classList.contains('embed')) return;
+  const m = MONTAGES[state.montage];
+  const els = m.electrodes;
   const view = document.getElementById('tsv-view');
   // Only render first ~ N rows for perf; table is scrollable
   const MAX = 400;
   const table = makeEl('table');
   const headRow = makeEl('tr');
-  ['name', 'x', 'y', 'z', 'type', 'material'].forEach(h => headRow.append(makeEl('th', { text: h })));
-  table.append(makeEl('thead'));
-  table.tHead.append(headRow);
-  const tbody = makeEl('tbody');
+  TSV_COLUMNS.forEach(h => headRow.append(makeEl('th', { text: h })));
+  table.createTHead().append(headRow);
+  const tbody = table.createTBody();
   els.slice(0, MAX).forEach(e => {
     const tr = makeEl('tr', { className: state.selected.has(e.name) ? 'selected' : '' });
-    tr.dataset.name = e.name;
-    [e.name, e.x, e.y, e.z, 'EEG', 'Ag/AgCl'].forEach(v => tr.append(makeEl('td', { text: v })));
+    tsvRow(e).forEach(v => tr.append(makeEl('td', { text: v })));
     tr.addEventListener('click', () => {
-      const n = tr.dataset.name;
-      if (state.selected.has(n)) state.selected.delete(n);
-      else state.selected.add(n);
+      if (state.selected.has(e.name)) state.selected.delete(e.name);
+      else state.selected.add(e.name);
       applySelection();
     });
     tbody.append(tr);
   });
-  table.append(tbody);
-  view.replaceChildren(table);
+  view.textContent = '';
+  view.append(table);
   if (els.length > MAX) {
     view.append(makeEl('div', {
       text: `…${els.length - MAX} more rows (downloaded TSV includes all)`,
       style: { color: 'var(--muted)', paddingTop: '8px' },
     }));
   }
-  document.getElementById('tsv-sub').textContent =
-    `${els.length} electrodes · RAS+ meters · units=m · head_radius=${HEAD_RADIUS_M}m`;
+  document.getElementById('tsv-sub').textContent = m.layoutStyle === 'flat'
+    ? `${els.length} electrodes · ${m.space || 'Other'} · units=${m.units || 'n/a'}`
+    : `${els.length} electrodes · RAS+ meters · units=m · head_radius=${(m.sphere?.R ?? HEAD_RADIUS_M).toFixed(5)}m`;
 }
 
 function downloadTSV(onlySelected) {
@@ -719,22 +734,31 @@ function downloadTSV(onlySelected) {
 
 function downloadCoordsystemJSON() {
   const m = MONTAGES[state.montage];
-  const space = m.space || 'Other';
+  // When bids-loader rotated an ALS frame (EEGLAB/CTF/4D/KIT) into RAS+,
+  // keeping the ALS label would make downstream readers rotate a second time.
+  const space = m.axisTransform ? 'Other' : (m.space || 'Other');
   const units = m.units || 'm';
-  const obj = {
-    EEGCoordinateSystem: space,
-    EEGCoordinateUnits: units,
-    EEGCoordinateSystemDescription: "RAS+ head-based coordinates. Origin at head center. +X right, +Y anterior (nasion), +Z superior (vertex).",
-    AnatomicalLandmarkCoordinates: {
-      NAS: [0, HEAD_RADIUS_M * 1.04, 0],
-      LPA: [-HEAD_RADIUS_M * 1.04, 0, 0],
-      RPA: [ HEAD_RADIUS_M * 1.04, 0, 0],
-    },
-    AnatomicalLandmarkCoordinateSystem: space,
-    AnatomicalLandmarkCoordinateUnits: units,
-    FiducialsDescription: "Synthetic landmarks derived from the spherical head model.",
-    Montage: m.label,
-  };
+  const R = m.sphere?.R ?? HEAD_RADIUS_M;
+  const obj = m.layoutStyle === 'flat'
+    ? {
+        EEGCoordinateSystem: space,
+        EEGCoordinateUnits: units,
+        Montage: m.label,
+      }
+    : {
+        EEGCoordinateSystem: space,
+        EEGCoordinateUnits: units,
+        EEGCoordinateSystemDescription: "RAS+ head-based coordinates. Origin at head center. +X right, +Y anterior (nasion), +Z superior (vertex).",
+        AnatomicalLandmarkCoordinates: {
+          NAS: [0, R * 1.04, 0],
+          LPA: [-R * 1.04, 0, 0],
+          RPA: [ R * 1.04, 0, 0],
+        },
+        AnatomicalLandmarkCoordinateSystem: space,
+        AnatomicalLandmarkCoordinateUnits: units,
+        FiducialsDescription: "Synthetic landmarks derived from the spherical head model.",
+        Montage: m.label,
+      };
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -809,6 +833,14 @@ document.getElementById('val-size').textContent = TWEAK_DEFAULTS.dotSize.toFixed
    document.querySelectorAll(`#${g} .view-btn`).forEach(b => b.classList.toggle('on', b.dataset.val === v));
 });
 
+/* Apply display-mode flags before the initial setMontage so embed mode never
+   builds hidden rail/TSV DOM nodes at boot. */
+(() => {
+  const p = new URLSearchParams(location.search);
+  if (p.has('embed'))  document.body.classList.add('embed');
+  if (p.has('tweaks')) document.getElementById('tweaks-panel')?.classList.add('visible');
+})();
+
 setMontage(state.montage);
 
 /* ===========================================================
@@ -836,14 +868,6 @@ setMontage(state.montage);
 const AUTOLOAD_FETCH_TIMEOUT_MS = 15_000;  // abort if S3 hangs longer than this
 const AUTOLOAD_MAX_BYTES        = 5_000_000;  // refuse anything larger than 5 MB
 const AUTOLOAD_MAX_LABEL_LEN    = 28;
-
-/* Apply display-mode flags eagerly so the viewer is already styled by the
-   time the auto-load resolves. Safe even when no auto-load params are set. */
-(() => {
-  const p = new URLSearchParams(location.search);
-  if (p.has('embed'))  document.body.classList.add('embed');
-  if (p.has('tweaks')) document.getElementById('tweaks-panel')?.classList.add('visible');
-})();
 
 (async () => {
   const params = new URLSearchParams(location.search);
